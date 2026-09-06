@@ -1,10 +1,10 @@
 import pandas as pd
 def read_csv(file_path):
-    """Step 1: Read the raw CSV file."""
+  
     df = pd.read_csv(file_path)
     return df
 def clean_data(df):
-    """Step 2: Clean names/emails and parse date-time columns."""
+    
     df = df.copy()
 
     
@@ -22,9 +22,7 @@ def clean_data(df):
 
 
 def calculate_duration(df):
-    """Step 3: Calculate total attendance duration per participant,
-    correctly handling multiple join/leave sessions (rejoins)."""
-
+   
     
     df["Session Duration (min)"] = (
         (df["Leave Time"] - df["Join Time"]).dt.total_seconds() / 60
