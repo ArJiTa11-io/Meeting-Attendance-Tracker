@@ -3,3 +3,5 @@ credentials.json
 .env
 __pycache__/
 *.pyc
+meeting-bot/browser-profile/
+node_modules/

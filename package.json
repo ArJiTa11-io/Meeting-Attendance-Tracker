@@ -1,0 +1,23 @@
+{
+  "name": "meeting-attendance-tracker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ArJiTa11-io/Meeting-Attendance-Tracker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ArJiTa11-io/Meeting-Attendance-Tracker/issues"
+  },
+  "homepage": "https://github.com/ArJiTa11-io/Meeting-Attendance-Tracker#readme",
+  "dependencies": {
+    "playwright": "^1.63.0"
+  }
+}

@@ -38,7 +38,17 @@ def read_processed_data(file_path):
 
     df = pd.read_csv(file_path)
 
-    required_columns = ["Name", "Email", "Date"]
+    required_columns = [
+        "Name",
+        "Email",
+        "Date",
+        "Join Time",
+        "Leave Time",
+        "Duration (min)",
+        "Sessions",
+        "Attendance %",
+        "Status",
+    ]
 
     for column in required_columns:
         if column not in df.columns:
@@ -46,18 +56,22 @@ def read_processed_data(file_path):
                 f"Required column '{column}' is missing from the CSV."
             )
 
-    records = df[required_columns].to_dict("records")
-
-    return records
+    return df[required_columns].to_dict("records")
 
 
 def validate_record(record):
     """Check whether the attendance record has required data."""
 
-    required_fields = ["Name", "Email", "Date"]
+    required_fields = [
+        "Name",
+        "Email",
+        "Date",
+    ]
 
     for field in required_fields:
-        if pd.isna(record.get(field)) or not str(record.get(field)).strip():
+        value = record.get(field)
+
+        if pd.isna(value) or not str(value).strip():
             print(
                 f"Invalid record: {field} is missing "
                 f"for {record.get('Name', 'Unknown')}"
@@ -68,7 +82,12 @@ def validate_record(record):
 
 
 def create_record_key(record):
-    """Create a unique key using participant email and date."""
+    """
+    Create a unique key for an attendance record.
+
+    Email + Date identifies a participant's attendance
+    for a particular meeting date.
+    """
 
     email = str(record.get("Email", "")).strip().lower()
     date = str(record.get("Date", "")).strip()
@@ -77,7 +96,7 @@ def create_record_key(record):
 
 
 def prepare_rows(records):
-    """Convert attendance records into Google Sheet rows."""
+    """Convert processed attendance records into Sheet rows."""
 
     rows = []
 
@@ -86,6 +105,12 @@ def prepare_rows(records):
             record.get("Name", ""),
             record.get("Email", ""),
             record.get("Date", ""),
+            record.get("Join Time", ""),
+            record.get("Leave Time", ""),
+            record.get("Duration (min)", ""),
+            record.get("Sessions", ""),
+            record.get("Attendance %", ""),
+            record.get("Status", ""),
         ]
 
         rows.append(row)
@@ -94,7 +119,7 @@ def prepare_rows(records):
 
 
 def upload_records(records):
-    """Upload valid and new attendance records."""
+    """Upload valid and new attendance records to Google Sheets."""
 
     worksheet = connect_to_sheet()
 
@@ -126,6 +151,8 @@ def upload_records(records):
             continue
 
         new_records.append(record)
+
+        # Prevent duplicate records within the current input
         existing_keys.add(record_key)
 
     if not new_records:
@@ -146,6 +173,8 @@ if __name__ == "__main__":
 
     records = read_processed_data(PROCESSED_FILE)
 
-    print(f"Found {len(records)} processed attendance record(s).")
+    print(
+        f"Found {len(records)} processed attendance record(s)."
+    )
 
     upload_records(records)
