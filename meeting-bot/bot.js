@@ -7,13 +7,20 @@ async function main() {
 
     if (!meetLink) {
         console.log("Please provide a Google Meet link.");
-        console.log("Example: node meeting-bot/bot.js https://meet.google.com/abc-defg-hij");
+        console.log(
+            "Example: node meeting-bot/bot.js https://meet.google.com/abc-defg-hij"
+        );
         return;
     }
 
     const meetingId = meetLink
         .split("meet.google.com/")[1]
         ?.split(/[/?#]/)[0];
+
+    if (!meetingId) {
+        console.log("Invalid Google Meet link.");
+        return;
+    }
 
     const context = await chromium.launchPersistentContext(
         "./meeting-bot/browser-profile",
@@ -86,6 +93,11 @@ async function main() {
         "output"
     );
 
+    const reportsDirectory = path.join(
+        outputDirectory,
+        "reports"
+    );
+
     const outputFile = path.join(
         outputDirectory,
         "attendance.json"
@@ -95,20 +107,55 @@ async function main() {
         recursive: true
     });
 
+    fs.mkdirSync(reportsDirectory, {
+        recursive: true
+    });
+
+    const startedAt = new Date();
+
+    const reportFileName =
+        `${meetingId}_${startedAt
+            .toISOString()
+            .replace(/[:.]/g, "-")}.json`;
+
+    const reportFile = path.join(
+        reportsDirectory,
+        reportFileName
+    );
+
     const sessions = {};
     const activeParticipants = new Map();
 
-    function saveAttendance(status = "active") {
-        const attendanceData = {
+    function createAttendanceData(status) {
+        return {
             meeting_id: meetingId,
             status: status,
+            started_at: startedAt.toISOString(),
             last_updated: new Date().toISOString(),
             participants: sessions
         };
+    }
+
+    function saveAttendance(status = "active") {
+        const attendanceData =
+            createAttendanceData(status);
 
         fs.writeFileSync(
             outputFile,
-            JSON.stringify(attendanceData, null, 2)
+            JSON.stringify(
+                attendanceData,
+                null,
+                2
+            )
+        );
+
+        fs.writeFileSync(
+            reportFile,
+            JSON.stringify(
+                attendanceData,
+                null,
+                2
+            )
         );
     }
 
@@ -119,11 +166,17 @@ async function main() {
             .locator("span.zWGUib")
             .evaluateAll(elements =>
                 elements
-                    .map(element => element.parentElement?.innerText?.trim())
+                    .map(
+                        element =>
+                            element.parentElement
+                                ?.innerText
+                                ?.trim()
+                    )
                     .filter(Boolean)
             );
 
-        const currentParticipants = new Set(participants);
+        const currentParticipants =
+            new Set(participants);
 
         const now = new Date();
 
@@ -135,7 +188,11 @@ async function main() {
                 continue;
             }
 
-            if (!activeParticipants.has(participant)) {
+            if (
+                !activeParticipants.has(
+                    participant
+                )
+            ) {
                 if (!sessions[participant]) {
                     sessions[participant] = {
                         sessions: []
@@ -143,12 +200,19 @@ async function main() {
                 }
 
                 const session = {
-                    join_time: now.toISOString(),
+                    join_time:
+                        now.toISOString(),
                     leave_time: null
                 };
 
-                sessions[participant].sessions.push(session);
-                activeParticipants.set(participant, session);
+                sessions[
+                    participant
+                ].sessions.push(session);
+
+                activeParticipants.set(
+                    participant,
+                    session
+                );
 
                 console.log(
                     "JOINED:",
@@ -160,9 +224,19 @@ async function main() {
             }
         }
 
-        for (const [participant, session] of activeParticipants) {
-            if (!currentParticipants.has(participant)) {
-                session.leave_time = now.toISOString();
+        for (
+            const [
+                participant,
+                session
+            ] of activeParticipants
+        ) {
+            if (
+                !currentParticipants.has(
+                    participant
+                )
+            ) {
+                session.leave_time =
+                    now.toISOString();
 
                 console.log(
                     "LEFT:",
@@ -170,7 +244,9 @@ async function main() {
                     session.leave_time
                 );
 
-                activeParticipants.delete(participant);
+                activeParticipants.delete(
+                    participant
+                );
 
                 saveAttendance();
             }
@@ -178,16 +254,34 @@ async function main() {
 
         saveAttendance();
 
-        console.log("\nCurrent participants:");
+        console.log(
+            "\nCurrent participants:"
+        );
 
-        for (const participant of currentParticipants) {
-            console.log("-", participant);
+        for (
+            const participant of currentParticipants
+        ) {
+            console.log(
+                "-",
+                participant
+            );
         }
 
-        console.log("\nSession data:");
-        console.log(JSON.stringify(sessions, null, 2));
+        console.log(
+            "\nSession data:"
+        );
 
-        await meetingPage.waitForTimeout(10000);
+        console.log(
+            JSON.stringify(
+                sessions,
+                null,
+                2
+            )
+        );
+
+        await meetingPage.waitForTimeout(
+            10000
+        );
     }
 }
 
