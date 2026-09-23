@@ -137,7 +137,7 @@ def render_reports_table(df, reports):
             c4.write(f"{row['Participants']} attendees")
             c5.write(f"{row['Avg Attendance %']}% avg")
 
-            if st.button("View Report", key=f"view_{row['Meeting ID']}"):
+            if st.button("View Report", key=f"view_{row['Meeting ID']}_{i}"):
                 st.session_state["selected_meeting"] = row["Meeting ID"]
 
     selected_id = st.session_state.get("selected_meeting")
