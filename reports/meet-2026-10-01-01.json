@@ -1,0 +1,56 @@
+{
+  "meeting_id": "meet-2026-10-01-01",
+  "meeting_title": "Standup",
+  "date": "2026-10-01",
+  "start_time": "11:15:00",
+  "end_time": "12:15:00",
+  "duration_minutes": 60,
+  "total_participants": 5,
+  "participants": [
+    {
+      "name": "Rohan Sharma",
+      "email": "rohan@company.com",
+      "join_time": "11:15 AM",
+      "leave_time": "12:15 PM",
+      "duration_minutes": 60,
+      "attendance_percentage": 100.0,
+      "status": "Present"
+    },
+    {
+      "name": "Sana Khan",
+      "email": "sana@company.com",
+      "join_time": "11:25 AM",
+      "leave_time": "12:07 PM",
+      "duration_minutes": 42,
+      "attendance_percentage": 70.0,
+      "status": "Low Attendance"
+    },
+    {
+      "name": "Adhrav Rai",
+      "email": "adhrav@company.com",
+      "join_time": "11:25 AM",
+      "leave_time": "12:15 PM",
+      "duration_minutes": 50,
+      "attendance_percentage": 83.3,
+      "status": "Partially Present"
+    },
+    {
+      "name": "Arjita Pandey",
+      "email": "arjita@company.com",
+      "join_time": "11:15 AM",
+      "leave_time": "12:15 PM",
+      "duration_minutes": 60,
+      "attendance_percentage": 100.0,
+      "status": "Present"
+    },
+    {
+      "name": "Karan Mehta",
+      "email": "karan@company.com",
+      "join_time": "11:25 AM",
+      "leave_time": "12:12 PM",
+      "duration_minutes": 47,
+      "attendance_percentage": 78.3,
+      "status": "Partially Present"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "meeting_id": "meet-2026-09-07-01",
+  "meeting_title": "Sprint Planning",
+  "date": "2026-09-07",
+  "start_time": "10:15:00",
+  "end_time": "11:00:00",
+  "duration_minutes": 45,
+  "total_participants": 5,
+  "participants": [
+    {
+      "name": "Karan Mehta",
+      "email": "karan@company.com",
+      "join_time": "10:17 AM",
+      "leave_time": "10:45 AM",
+      "duration_minutes": 28,
+      "attendance_percentage": 62.2,
+      "status": "Low Attendance"
+    },
+    {
+      "name": "Arjita Pandey",
+      "email": "arjita@company.com",
+      "join_time": "10:15 AM",
+      "leave_time": "10:45 AM",
+      "duration_minutes": 30,
+      "attendance_percentage": 66.7,
+      "status": "Low Attendance"
+    },
+    {
+      "name": "Adhrav Rai",
+      "email": "adhrav@company.com",
+      "join_time": "10:15 AM",
+      "leave_time": "11:00 AM",
+      "duration_minutes": 45,
+      "attendance_percentage": 100.0,
+      "status": "Present"
+    },
+    {
+      "name": "Sana Khan",
+      "email": "sana@company.com",
+      "join_time": "10:17 AM",
+      "leave_time": "10:57 AM",
+      "duration_minutes": 40,
+      "attendance_percentage": 88.9,
+      "status": "Partially Present"
+    },
+    {
+      "name": "Rohan Sharma",
+      "email": "rohan@company.com",
+      "join_time": "10:15 AM",
+      "leave_time": "10:52 AM",
+      "duration_minutes": 37,
+      "attendance_percentage": 82.2,
+      "status": "Partially Present"
+    }
+  ]
+}

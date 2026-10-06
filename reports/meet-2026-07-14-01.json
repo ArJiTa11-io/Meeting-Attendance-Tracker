@@ -1,0 +1,38 @@
+{
+  "meeting_id": "meet-2026-07-14-01",
+  "meeting_title": "Design Walkthrough",
+  "date": "2026-07-14",
+  "start_time": "15:00:00",
+  "end_time": "16:00:00",
+  "duration_minutes": 60,
+  "total_participants": 3,
+  "participants": [
+    {
+      "name": "Karan Mehta",
+      "email": "karan@company.com",
+      "join_time": "3:05 PM",
+      "leave_time": "4:00 PM",
+      "duration_minutes": 55,
+      "attendance_percentage": 91.7,
+      "status": "Present"
+    },
+    {
+      "name": "Rohan Sharma",
+      "email": "rohan@company.com",
+      "join_time": "3:10 PM",
+      "leave_time": "4:00 PM",
+      "duration_minutes": 50,
+      "attendance_percentage": 83.3,
+      "status": "Partially Present"
+    },
+    {
+      "name": "Sana Khan",
+      "email": "sana@company.com",
+      "join_time": "3:00 PM",
+      "leave_time": "3:45 PM",
+      "duration_minutes": 45,
+      "attendance_percentage": 75.0,
+      "status": "Partially Present"
+    }
+  ]
+}

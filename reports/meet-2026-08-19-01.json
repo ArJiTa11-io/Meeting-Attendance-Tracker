@@ -1,0 +1,38 @@
+{
+  "meeting_id": "meet-2026-08-19-01",
+  "meeting_title": "Weekly Team Sync",
+  "date": "2026-08-19",
+  "start_time": "11:00:00",
+  "end_time": "11:30:00",
+  "duration_minutes": 30,
+  "total_participants": 3,
+  "participants": [
+    {
+      "name": "Rohan Sharma",
+      "email": "rohan@company.com",
+      "join_time": "11:05 AM",
+      "leave_time": "11:15 AM",
+      "duration_minutes": 10,
+      "attendance_percentage": 33.3,
+      "status": "Low Attendance"
+    },
+    {
+      "name": "Karan Mehta",
+      "email": "karan@company.com",
+      "join_time": "11:00 AM",
+      "leave_time": "11:30 AM",
+      "duration_minutes": 30,
+      "attendance_percentage": 100.0,
+      "status": "Present"
+    },
+    {
+      "name": "Priya Nair",
+      "email": "priya@company.com",
+      "join_time": "11:00 AM",
+      "leave_time": "11:30 AM",
+      "duration_minutes": 30,
+      "attendance_percentage": 100.0,
+      "status": "Present"
+    }
+  ]
+}

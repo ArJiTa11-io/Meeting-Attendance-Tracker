@@ -1,0 +1,65 @@
+{
+  "meeting_id": "meet-2026-08-05-01",
+  "meeting_title": "Design Walkthrough",
+  "date": "2026-08-05",
+  "start_time": "11:15:00",
+  "end_time": "12:00:00",
+  "duration_minutes": 45,
+  "total_participants": 6,
+  "participants": [
+    {
+      "name": "Sana Khan",
+      "email": "sana@company.com",
+      "join_time": "11:15 AM",
+      "leave_time": "12:00 PM",
+      "duration_minutes": 45,
+      "attendance_percentage": 100.0,
+      "status": "Present"
+    },
+    {
+      "name": "Karan Mehta",
+      "email": "karan@company.com",
+      "join_time": "11:20 AM",
+      "leave_time": "11:45 AM",
+      "duration_minutes": 25,
+      "attendance_percentage": 55.6,
+      "status": "Low Attendance"
+    },
+    {
+      "name": "Priya Nair",
+      "email": "priya@company.com",
+      "join_time": "11:20 AM",
+      "leave_time": "12:00 PM",
+      "duration_minutes": 40,
+      "attendance_percentage": 88.9,
+      "status": "Partially Present"
+    },
+    {
+      "name": "Arjita Pandey",
+      "email": "arjita@company.com",
+      "join_time": "11:25 AM",
+      "leave_time": "12:00 PM",
+      "duration_minutes": 35,
+      "attendance_percentage": 77.8,
+      "status": "Partially Present"
+    },
+    {
+      "name": "Rohan Sharma",
+      "email": "rohan@company.com",
+      "join_time": "11:15 AM",
+      "leave_time": "12:00 PM",
+      "duration_minutes": 45,
+      "attendance_percentage": 100.0,
+      "status": "Present"
+    },
+    {
+      "name": "Adhrav Rai",
+      "email": "adhrav@company.com",
+      "join_time": "11:20 AM",
+      "leave_time": "11:57 AM",
+      "duration_minutes": 37,
+      "attendance_percentage": 82.2,
+      "status": "Partially Present"
+    }
+  ]
+}

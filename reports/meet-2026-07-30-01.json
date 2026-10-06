@@ -1,0 +1,56 @@
+{
+  "meeting_id": "meet-2026-07-30-01",
+  "meeting_title": "Weekly Team Sync",
+  "date": "2026-07-30",
+  "start_time": "10:00:00",
+  "end_time": "10:30:00",
+  "duration_minutes": 30,
+  "total_participants": 5,
+  "participants": [
+    {
+      "name": "Arjita Pandey",
+      "email": "arjita@company.com",
+      "join_time": "10:00 AM",
+      "leave_time": "10:22 AM",
+      "duration_minutes": 22,
+      "attendance_percentage": 73.3,
+      "status": "Low Attendance"
+    },
+    {
+      "name": "Karan Mehta",
+      "email": "karan@company.com",
+      "join_time": "10:00 AM",
+      "leave_time": "10:15 AM",
+      "duration_minutes": 15,
+      "attendance_percentage": 50.0,
+      "status": "Low Attendance"
+    },
+    {
+      "name": "Adhrav Rai",
+      "email": "adhrav@company.com",
+      "join_time": "10:05 AM",
+      "leave_time": "10:22 AM",
+      "duration_minutes": 17,
+      "attendance_percentage": 56.7,
+      "status": "Low Attendance"
+    },
+    {
+      "name": "Priya Nair",
+      "email": "priya@company.com",
+      "join_time": "10:02 AM",
+      "leave_time": "10:30 AM",
+      "duration_minutes": 28,
+      "attendance_percentage": 93.3,
+      "status": "Present"
+    },
+    {
+      "name": "Rohan Sharma",
+      "email": "rohan@company.com",
+      "join_time": "10:02 AM",
+      "leave_time": "10:27 AM",
+      "duration_minutes": 25,
+      "attendance_percentage": 83.3,
+      "status": "Partially Present"
+    }
+  ]
+}
