@@ -1,0 +1,29 @@
+{
+  "meeting_id": "utt-pgmk-cbj",
+  "meeting_title": "utt-pgmk-cbj",
+  "date": "2026-10-05",
+  "start_time": "2026-10-05T13:06:37.498Z",
+  "end_time": "2026-10-05T13:17:13.867Z",
+  "duration_minutes": 10.6,
+  "total_participants": 1,
+  "low_attendance_count": 1,
+  "status": "completed",
+  "last_updated": "2026-10-05T13:17:13.868Z",
+  "participants": [
+    {
+      "name": "Div",
+      "email": "",
+      "join_time": "2026-10-05T13:15:29.819Z",
+      "leave_time": "2026-10-05T13:17:13.867Z",
+      "duration_minutes": 1.7,
+      "attendance_percentage": 16,
+      "status": "Low Attendance",
+      "sessions": [
+        {
+          "join_time": "2026-10-05T13:15:29.819Z",
+          "leave_time": "2026-10-05T13:17:13.867Z"
+        }
+      ]
+    }
+  ]
+}

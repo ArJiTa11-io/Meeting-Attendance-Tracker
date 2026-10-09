@@ -1,0 +1,33 @@
+{
+  "meeting_id": "ueu-yyxm-uvb",
+  "meeting_title": "ueu-yyxm-uvb",
+  "date": "2026-10-05",
+  "start_time": "2026-10-05T09:47:49.996Z",
+  "end_time": "2026-10-05T09:49:40.343Z",
+  "duration_minutes": 1.8,
+  "total_participants": 1,
+  "low_attendance_count": 1,
+  "status": "completed",
+  "last_updated": "2026-10-05T09:49:40.343Z",
+  "participants": [
+    {
+      "name": "Div",
+      "email": "",
+      "join_time": "2026-10-05T09:47:50.702Z",
+      "leave_time": "2026-10-05T09:49:40.343Z",
+      "duration_minutes": 1,
+      "attendance_percentage": 55.6,
+      "status": "Low Attendance",
+      "sessions": [
+        {
+          "join_time": "2026-10-05T09:47:50.702Z",
+          "leave_time": "2026-10-05T09:48:31.120Z"
+        },
+        {
+          "join_time": "2026-10-05T09:49:21.605Z",
+          "leave_time": "2026-10-05T09:49:40.343Z"
+        }
+      ]
+    }
+  ]
+}

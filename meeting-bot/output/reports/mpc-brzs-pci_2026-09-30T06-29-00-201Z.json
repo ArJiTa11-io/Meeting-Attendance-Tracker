@@ -1,0 +1,196 @@
+{
+  "meeting_id": "mpc-brzs-pci",
+  "status": "active",
+  "started_at": "2026-09-30T06:29:00.201Z",
+  "last_updated": "2026-09-30T07:05:37.112Z",
+  "participants": {
+    "GokulKrishna Rajendran": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:29:00.332Z",
+          "leave_time": "2026-09-30T06:39:45.360Z"
+        }
+      ]
+    },
+    "Poonam Bora": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:29:00.332Z",
+          "leave_time": null
+        }
+      ]
+    },
+    "Gayathri Siddabathini": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:29:30.582Z",
+          "leave_time": "2026-09-30T06:38:34.511Z"
+        },
+        {
+          "join_time": "2026-09-30T06:46:58.509Z",
+          "leave_time": "2026-09-30T06:55:01.923Z"
+        },
+        {
+          "join_time": "2026-09-30T06:56:22.337Z",
+          "leave_time": null
+        }
+      ]
+    },
+    "Soni Kumari": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:29:40.642Z",
+          "leave_time": null
+        }
+      ]
+    },
+    "Anurag Yadav": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:29:50.706Z",
+          "leave_time": null
+        }
+      ]
+    },
+    "Samiksha Warghat": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:30:00.760Z",
+          "leave_time": null
+        }
+      ]
+    },
+    "Rishika Kumari": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:30:10.921Z",
+          "leave_time": null
+        }
+      ]
+    },
+    "Sourabh Ranjan Meher": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:30:10.921Z",
+          "leave_time": null
+        }
+      ]
+    },
+    "hariom Yadav123": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:31:01.568Z",
+          "leave_time": "2026-09-30T06:46:38.393Z"
+        }
+      ]
+    },
+    "Shravan Kumar Barik": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:31:11.655Z",
+          "leave_time": "2026-09-30T06:53:51.254Z"
+        }
+      ]
+    },
+    "Chaitanya Kolhal": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:31:21.729Z",
+          "leave_time": null
+        }
+      ]
+    },
+    "ARTI PARIHAR": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:32:12.010Z",
+          "leave_time": "2026-09-30T06:35:13.149Z"
+        },
+        {
+          "join_time": "2026-09-30T06:35:43.334Z",
+          "leave_time": null
+        }
+      ]
+    },
+    "33_trupti ramteke": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:32:32.104Z",
+          "leave_time": null
+        }
+      ]
+    },
+    "Barathan Suresh": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:34:12.697Z",
+          "leave_time": null
+        }
+      ]
+    },
+    "alok rana": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:34:22.775Z",
+          "leave_time": "2026-09-30T06:35:33.256Z"
+        }
+      ]
+    },
+    "Om pisal": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:35:03.094Z",
+          "leave_time": "2026-09-30T07:01:54.953Z"
+        }
+      ]
+    },
+    "Priyanka Deshmukh": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:36:43.878Z",
+          "leave_time": "2026-09-30T06:39:04.865Z"
+        }
+      ]
+    },
+    "Chavi Rathi": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:38:04.328Z",
+          "leave_time": "2026-09-30T06:46:48.452Z"
+        }
+      ]
+    },
+    "sakshi girase": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:40:35.874Z",
+          "leave_time": null
+        }
+      ]
+    },
+    "Ananya Chaturvedi": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T06:47:48.778Z",
+          "leave_time": null
+        }
+      ]
+    },
+    "Mohil koriya": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T07:02:45.751Z",
+          "leave_time": null
+        }
+      ]
+    },
+    "Shantanu Gorai": {
+      "sessions": [
+        {
+          "join_time": "2026-09-30T07:05:37.105Z",
+          "leave_time": null
+        }
+      ]
+    }
+  }
+}

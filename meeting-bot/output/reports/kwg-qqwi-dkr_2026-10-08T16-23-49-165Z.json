@@ -1,0 +1,39 @@
+{
+  "meeting_id": "kwg-qqwi-dkr",
+  "meeting_title": "test@1",
+  "date": "2026-10-08",
+  "start_time": "2026-10-08T16:23:49.165Z",
+  "end_time": "2026-10-08T16:40:59.654Z",
+  "duration_minutes": 17.2,
+  "total_participants": 1,
+  "low_attendance_count": 0,
+  "expected_attendees": [],
+  "present_attendees": [
+    "Divit Razdan"
+  ],
+  "absent_attendees": [],
+  "total_expected": 0,
+  "present_count": 1,
+  "absent_count": 0,
+  "attendance_rate": null,
+  "absent_rate": null,
+  "status": "completed",
+  "last_updated": "2026-10-08T16:40:59.656Z",
+  "participants": [
+    {
+      "name": "Divit Razdan",
+      "email": "",
+      "join_time": "2026-10-08T16:23:49.205Z",
+      "leave_time": "2026-10-08T16:40:59.654Z",
+      "duration_minutes": 17.2,
+      "attendance_percentage": 100,
+      "status": "Present",
+      "sessions": [
+        {
+          "join_time": "2026-10-08T16:23:49.205Z",
+          "leave_time": "2026-10-08T16:40:59.654Z"
+        }
+      ]
+    }
+  ]
+}

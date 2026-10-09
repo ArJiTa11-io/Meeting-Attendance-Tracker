@@ -1,0 +1,42 @@
+{
+  "meeting_id": "vss-wmbo-mmp",
+  "meeting_title": "vss-wmbo-mmp",
+  "date": "2026-10-06",
+  "start_time": "2026-10-06T17:49:53.299Z",
+  "end_time": "2026-10-06T17:54:17.837Z",
+  "duration_minutes": 4.4,
+  "total_participants": 1,
+  "low_attendance_count": 1,
+  "roster_provided": false,
+  "expected_attendees": [],
+  "total_expected": 0,
+  "present_count": 0,
+  "absent_count": 0,
+  "attendance_rate": null,
+  "absent_rate": null,
+  "present_attendees": [],
+  "absent_attendees": [],
+  "status": "completed",
+  "last_updated": "2026-10-06T17:54:17.838Z",
+  "participants": [
+    {
+      "name": "Divit Razdan",
+      "email": "",
+      "join_time": "2026-10-06T17:49:53.905Z",
+      "leave_time": "2026-10-06T17:52:44.623Z",
+      "duration_minutes": 2.7,
+      "attendance_percentage": 61.4,
+      "status": "Low Attendance",
+      "sessions": [
+        {
+          "join_time": "2026-10-06T17:49:53.905Z",
+          "leave_time": "2026-10-06T17:50:14.008Z"
+        },
+        {
+          "join_time": "2026-10-06T17:50:24.056Z",
+          "leave_time": "2026-10-06T17:52:44.623Z"
+        }
+      ]
+    }
+  ]
+}
