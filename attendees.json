@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Arjita Pandey",
+    "email": "arjita@company.com",
+    "joining_date": "2026-01-15",
+    "working_period": "Full-time"
+  },
+  {
+    "name": "Adhrav Rai",
+    "email": "adhrav@company.com",
+    "joining_date": "2026-01-15",
+    "working_period": "Full-time"
+  },
+  {
+    "name": "Rohan Sharma",
+    "email": "rohan@company.com",
+    "joining_date": "2026-02-01",
+    "working_period": "Full-time"
+  },
+  {
+    "name": "Priya Nair",
+    "email": "priya@company.com",
+    "joining_date": "2026-02-10",
+    "working_period": "Full-time"
+  },
+  {
+    "name": "Karan Mehta",
+    "email": "karan@company.com",
+    "joining_date": "2026-03-01",
+    "working_period": "Part-time"
+  }
+]

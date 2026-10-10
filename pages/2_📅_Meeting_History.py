@@ -7,6 +7,7 @@ import streamlit as st
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPORTS_DIR = os.path.join(PROJECT_ROOT, "reports")
+ATTENDEES_FILE = os.path.join(PROJECT_ROOT, "attendees.json")
 
 st.set_page_config(page_title="Meeting History", page_icon="📅", layout="wide")
 
@@ -23,6 +24,28 @@ def load_all_reports():
     # newest first
     reports.sort(key=lambda r: (r.get("date", ""), r.get("start_time", "")), reverse=True)
     return reports
+
+
+@st.cache_data(ttl=30)
+def load_attendee_roster():
+    """The master list of everyone expected to attend meetings
+    (managed on the 'Manage Attendees' page). Used to work out who's
+    truly Absent (on the roster, but missing from a meeting) rather
+    than just relying on Low Attendance as a stand-in."""
+    if not os.path.exists(ATTENDEES_FILE):
+        return []
+    try:
+        with open(ATTENDEES_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def get_true_absentees(meeting, roster):
+    """Roster members who don't appear anywhere in this meeting's
+    participant list at all."""
+    attended_names = {p.get("name", "").strip().lower() for p in meeting.get("participants", [])}
+    return [person for person in roster if person.get("name", "").strip().lower() not in attended_names]
 
 
 def format_time_12h(time_str):
@@ -42,6 +65,7 @@ def format_time_12h(time_str):
 st.title("📅 Meeting History")
 
 reports = load_all_reports()
+roster = load_attendee_roster()
 
 if not reports:
     st.info(
@@ -84,6 +108,7 @@ if st.session_state.selected_meeting_id is not None:
     participants = meeting.get("participants", [])
     total_attendees = len(participants)
     low_attendance_count = sum(1 for p in participants if p.get("status") == "Low Attendance")
+    true_absentees = get_true_absentees(meeting, roster)
 
     st.markdown(f"## {meeting.get('meeting_title', 'Meeting')}")
     date_display = meeting.get("date", "")
@@ -96,9 +121,16 @@ if st.session_state.selected_meeting_id is not None:
         f"– {format_time_12h(meeting.get('end_time', ''))}"
     )
 
-    kpi_col1, kpi_col2 = st.columns(2)
+    if not roster:
+        st.caption(
+            "ℹ️ No attendee list set up yet — add people on the **Manage Attendees** "
+            "page to see true Absent counts here (people who were expected but never joined)."
+        )
+
+    kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
     kpi_col1.metric("Total Attendees", total_attendees)
     kpi_col2.metric("Low Attendance", low_attendance_count)
+    kpi_col3.metric("Absent", len(true_absentees))
 
     st.divider()
 
@@ -114,10 +146,27 @@ if st.session_state.selected_meeting_id is not None:
             }
         )
 
+    # roster members who never joined this meeting at all
+    for person in true_absentees:
+        table_rows.append(
+            {
+                "Name": person.get("name", ""),
+                "Joining Time": "—",
+                "Leaving Time": "—",
+                "Duration": "—",
+                "Status": "Absent",
+            }
+        )
+
     table_df = pd.DataFrame(table_rows)
 
     def highlight_status(row):
-        color = "#e74c3c" if row["Status"] == "Low Attendance" else "#2ecc71"
+        if row["Status"] == "Absent":
+            color = "#e74c3c"
+        elif row["Status"] == "Low Attendance":
+            color = "#f39c12"
+        else:
+            color = "#2ecc71"
         return [f"color: {color}" if col == "Status" else "" for col in row.index]
 
     st.dataframe(
@@ -163,6 +212,7 @@ else:
         participants = meeting.get("participants", [])
         total = len(participants)
         low_count = sum(1 for p in participants if p.get("status") == "Low Attendance")
+        absent_count = len(get_true_absentees(meeting, roster))
 
         try:
             date_display = pd.to_datetime(meeting.get("date")).strftime("%d %b %Y")
@@ -182,6 +232,7 @@ else:
                 st.caption(
                     f"{total} attendee(s)"
                     + (f" · ⚠️ {low_count} low attendance" if low_count else "")
+                    + (f" · 🔴 {absent_count} absent" if absent_count else "")
                 )
 
             with card_col2:
