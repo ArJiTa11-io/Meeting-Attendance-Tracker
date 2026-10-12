@@ -1,0 +1,228 @@
+{
+  "meeting_id": "mpc-brzs-pci",
+  "meeting_title": "mpc-brzs-pci",
+  "date": "2026-10-06",
+  "start_time": "2026-10-06T06:39:38.509Z",
+  "end_time": null,
+  "duration_minutes": 34.5,
+  "total_participants": 14,
+  "low_attendance_count": 2,
+  "status": "active",
+  "last_updated": "2026-10-06T07:14:10.137Z",
+  "participants": [
+    {
+      "name": "Anjali Jodatti",
+      "email": "",
+      "join_time": "2026-10-06T06:39:38.545Z",
+      "leave_time": "2026-10-06T07:14:10.103Z",
+      "duration_minutes": 34.5,
+      "attendance_percentage": 100,
+      "status": "Present",
+      "sessions": [
+        {
+          "join_time": "2026-10-06T06:39:38.545Z",
+          "leave_time": "2026-10-06T07:14:10.103Z"
+        }
+      ]
+    },
+    {
+      "name": "Chaitanya Kolhal",
+      "email": "",
+      "join_time": "2026-10-06T06:39:38.545Z",
+      "leave_time": "2026-10-06T07:14:10.103Z",
+      "duration_minutes": 34.5,
+      "attendance_percentage": 100,
+      "status": "Present",
+      "sessions": [
+        {
+          "join_time": "2026-10-06T06:39:38.545Z",
+          "leave_time": "2026-10-06T07:14:10.103Z"
+        }
+      ]
+    },
+    {
+      "name": "Gayathri Siddabathini",
+      "email": "",
+      "join_time": "2026-10-06T06:39:38.545Z",
+      "leave_time": "2026-10-06T07:14:10.103Z",
+      "duration_minutes": 34.5,
+      "attendance_percentage": 100,
+      "status": "Present",
+      "sessions": [
+        {
+          "join_time": "2026-10-06T06:39:38.545Z",
+          "leave_time": "2026-10-06T07:14:10.103Z"
+        }
+      ]
+    },
+    {
+      "name": "GokulKrishna Rajendran",
+      "email": "",
+      "join_time": "2026-10-06T06:39:38.545Z",
+      "leave_time": "2026-10-06T07:14:10.103Z",
+      "duration_minutes": 34.5,
+      "attendance_percentage": 100,
+      "status": "Present",
+      "sessions": [
+        {
+          "join_time": "2026-10-06T06:39:38.545Z",
+          "leave_time": "2026-10-06T07:14:10.103Z"
+        }
+      ]
+    },
+    {
+      "name": "Om pisal",
+      "email": "",
+      "join_time": "2026-10-06T06:39:38.545Z",
+      "leave_time": "2026-10-06T07:14:10.103Z",
+      "duration_minutes": 34.5,
+      "attendance_percentage": 100,
+      "status": "Present",
+      "sessions": [
+        {
+          "join_time": "2026-10-06T06:39:38.545Z",
+          "leave_time": "2026-10-06T07:14:10.103Z"
+        }
+      ]
+    },
+    {
+      "name": "Omkar Mishra",
+      "email": "",
+      "join_time": "2026-10-06T06:39:38.545Z",
+      "leave_time": "2026-10-06T07:13:19.908Z",
+      "duration_minutes": 33.2,
+      "attendance_percentage": 96.2,
+      "status": "Present",
+      "sessions": [
+        {
+          "join_time": "2026-10-06T06:39:38.545Z",
+          "leave_time": "2026-10-06T06:47:32.785Z"
+        },
+        {
+          "join_time": "2026-10-06T06:48:02.879Z",
+          "leave_time": "2026-10-06T07:13:19.908Z"
+        }
+      ]
+    },
+    {
+      "name": "Poonam Bora",
+      "email": "",
+      "join_time": "2026-10-06T06:39:38.545Z",
+      "leave_time": "2026-10-06T07:14:10.103Z",
+      "duration_minutes": 34.5,
+      "attendance_percentage": 100,
+      "status": "Present",
+      "sessions": [
+        {
+          "join_time": "2026-10-06T06:39:38.545Z",
+          "leave_time": "2026-10-06T07:14:10.103Z"
+        }
+      ]
+    },
+    {
+      "name": "Priyanka Deshmukh",
+      "email": "",
+      "join_time": "2026-10-06T06:39:38.545Z",
+      "leave_time": "2026-10-06T07:14:10.103Z",
+      "duration_minutes": 34.5,
+      "attendance_percentage": 100,
+      "status": "Present",
+      "sessions": [
+        {
+          "join_time": "2026-10-06T06:39:38.545Z",
+          "leave_time": "2026-10-06T07:14:10.103Z"
+        }
+      ]
+    },
+    {
+      "name": "Rishika Kumari",
+      "email": "",
+      "join_time": "2026-10-06T06:39:38.545Z",
+      "leave_time": "2026-10-06T07:14:10.103Z",
+      "duration_minutes": 34.5,
+      "attendance_percentage": 100,
+      "status": "Present",
+      "sessions": [
+        {
+          "join_time": "2026-10-06T06:39:38.545Z",
+          "leave_time": "2026-10-06T07:14:10.103Z"
+        }
+      ]
+    },
+    {
+      "name": "Salwa Khan",
+      "email": "",
+      "join_time": "2026-10-06T06:39:38.545Z",
+      "leave_time": "2026-10-06T07:14:10.103Z",
+      "duration_minutes": 34.5,
+      "attendance_percentage": 100,
+      "status": "Present",
+      "sessions": [
+        {
+          "join_time": "2026-10-06T06:39:38.545Z",
+          "leave_time": "2026-10-06T07:14:10.103Z"
+        }
+      ]
+    },
+    {
+      "name": "Soni Kumari",
+      "email": "",
+      "join_time": "2026-10-06T06:39:38.545Z",
+      "leave_time": "2026-10-06T07:14:10.103Z",
+      "duration_minutes": 34.5,
+      "attendance_percentage": 100,
+      "status": "Present",
+      "sessions": [
+        {
+          "join_time": "2026-10-06T06:39:38.545Z",
+          "leave_time": "2026-10-06T07:14:10.103Z"
+        }
+      ]
+    },
+    {
+      "name": "Sourabh Ranjan Meher",
+      "email": "",
+      "join_time": "2026-10-06T06:39:38.545Z",
+      "leave_time": "2026-10-06T07:14:10.103Z",
+      "duration_minutes": 34.5,
+      "attendance_percentage": 100,
+      "status": "Present",
+      "sessions": [
+        {
+          "join_time": "2026-10-06T06:39:38.545Z",
+          "leave_time": "2026-10-06T07:14:10.103Z"
+        }
+      ]
+    },
+    {
+      "name": "Parth Aoundhkar",
+      "email": "",
+      "join_time": "2026-10-06T06:48:33.245Z",
+      "leave_time": "2026-10-06T06:48:43.324Z",
+      "duration_minutes": 0.2,
+      "attendance_percentage": 0.6,
+      "status": "Low Attendance",
+      "sessions": [
+        {
+          "join_time": "2026-10-06T06:48:33.245Z",
+          "leave_time": "2026-10-06T06:48:43.324Z"
+        }
+      ]
+    },
+    {
+      "name": "hariom Yadav123",
+      "email": "",
+      "join_time": "2026-10-06T06:52:24.747Z",
+      "leave_time": "2026-10-06T07:14:10.103Z",
+      "duration_minutes": 21.8,
+      "attendance_percentage": 63.2,
+      "status": "Low Attendance",
+      "sessions": [
+        {
+          "join_time": "2026-10-06T06:52:24.747Z",
+          "leave_time": "2026-10-06T07:14:10.103Z"
+        }
+      ]
+    }
+  ]
+}

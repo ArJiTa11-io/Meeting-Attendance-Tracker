@@ -1,0 +1,48 @@
+{
+  "meeting_id": "ueu-yyxm-uvb",
+  "meeting_title": "Test",
+  "date": "2026-10-05",
+  "start_time": "2026-10-05T10:14:27.777Z",
+  "end_time": "2026-10-05T10:16:43.385Z",
+  "duration_minutes": 2.3,
+  "total_participants": 2,
+  "low_attendance_count": 2,
+  "status": "completed",
+  "last_updated": "2026-10-05T10:16:43.387Z",
+  "participants": [
+    {
+      "name": "Havoc",
+      "email": "",
+      "join_time": "2026-10-05T10:14:28.145Z",
+      "leave_time": "2026-10-05T10:15:38.575Z",
+      "duration_minutes": 1.2,
+      "attendance_percentage": 52.2,
+      "status": "Low Attendance",
+      "sessions": [
+        {
+          "join_time": "2026-10-05T10:14:28.145Z",
+          "leave_time": "2026-10-05T10:15:38.575Z"
+        }
+      ]
+    },
+    {
+      "name": "Div",
+      "email": "",
+      "join_time": "2026-10-05T10:15:49.024Z",
+      "leave_time": "2026-10-05T10:16:43.385Z",
+      "duration_minutes": 0.6,
+      "attendance_percentage": 26.1,
+      "status": "Low Attendance",
+      "sessions": [
+        {
+          "join_time": "2026-10-05T10:15:49.024Z",
+          "leave_time": "2026-10-05T10:16:09.083Z"
+        },
+        {
+          "join_time": "2026-10-05T10:16:29.256Z",
+          "leave_time": "2026-10-05T10:16:43.385Z"
+        }
+      ]
+    }
+  ]
+}

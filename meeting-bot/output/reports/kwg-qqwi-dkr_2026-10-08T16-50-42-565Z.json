@@ -1,0 +1,56 @@
+{
+  "meeting_id": "kwg-qqwi-dkr",
+  "meeting_title": "kwg-qqwi-dkr",
+  "date": "2026-10-08",
+  "start_time": "2026-10-08T16:50:42.565Z",
+  "end_time": "2026-10-08T16:55:04.834Z",
+  "duration_minutes": 4.4,
+  "total_participants": 2,
+  "low_attendance_count": 1,
+  "expected_attendees": [
+    "Divit Razdan"
+  ],
+  "present_attendees": [
+    "Divit Razdan"
+  ],
+  "absent_attendees": [],
+  "total_expected": 1,
+  "present_count": 1,
+  "absent_count": 0,
+  "attendance_rate": 100,
+  "absent_rate": 0,
+  "status": "completed",
+  "last_updated": "2026-10-08T16:55:04.835Z",
+  "participants": [
+    {
+      "name": "Divit Razdan",
+      "email": "",
+      "join_time": "2026-10-08T16:50:42.637Z",
+      "leave_time": "2026-10-08T16:55:04.834Z",
+      "duration_minutes": 4.4,
+      "attendance_percentage": 100,
+      "status": "Present",
+      "sessions": [
+        {
+          "join_time": "2026-10-08T16:50:42.637Z",
+          "leave_time": "2026-10-08T16:55:04.834Z"
+        }
+      ]
+    },
+    {
+      "name": "Havoc",
+      "email": "",
+      "join_time": "2026-10-08T16:51:12.716Z",
+      "leave_time": "2026-10-08T16:52:12.813Z",
+      "duration_minutes": 1,
+      "attendance_percentage": 22.9,
+      "status": "Low Attendance",
+      "sessions": [
+        {
+          "join_time": "2026-10-08T16:51:12.716Z",
+          "leave_time": "2026-10-08T16:52:12.813Z"
+        }
+      ]
+    }
+  ]
+}

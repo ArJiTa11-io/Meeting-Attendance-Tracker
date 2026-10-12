@@ -8,24 +8,26 @@ import plotly.graph_objects as go
 import streamlit as st
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REPORTS_DIR = os.path.join(PROJECT_ROOT, "reports")
+REPORTS_DIR = os.path.join(PROJECT_ROOT, "meeting-bot", "output", "reports")
 ATTENDEES_FILE = os.path.join(PROJECT_ROOT, "attendees.json")
 
 st.set_page_config(page_title="Dashboard", page_icon="📊", layout="wide")
 
 
-# ---------------------------------------------------------------------
-# Data loading
-# ---------------------------------------------------------------------
 
-@st.cache_data(ttl=30)
+# Data loading
+
+
+@st.cache_data(ttl=2)
 def load_all_reports():
-    """Reads every report JSON file in /reports and returns a list of dicts."""
+    """Reads every report JSON file in meeting-bot/output/reports."""
     reports = []
     for path in sorted(glob.glob(os.path.join(REPORTS_DIR, "*.json"))):
         try:
             with open(path, "r", encoding="utf-8") as f:
-                reports.append(json.load(f))
+                report = json.load(f)
+                if isinstance(report, dict):
+                    reports.append(report)
         except (json.JSONDecodeError, OSError):
             continue
     return reports
@@ -33,8 +35,7 @@ def load_all_reports():
 
 @st.cache_data(ttl=30)
 def load_attendee_roster():
-    """Master list of everyone expected to attend meetings, managed on
-    the 'Manage Attendees' page. Used to work out true Absent counts."""
+    
     if not os.path.exists(ATTENDEES_FILE):
         return []
     try:
@@ -49,7 +50,12 @@ def reports_to_participant_rows(reports):
     rows = []
     for report in reports:
         meeting_date = report.get("date")
-        for participant in report.get("participants", []):
+        participants = report.get("participants", [])
+        if not isinstance(participants, list):
+            continue
+        for participant in participants:
+            if not isinstance(participant, dict):
+                continue
             rows.append(
                 {
                     "meeting_id": report.get("meeting_id"),
@@ -63,30 +69,63 @@ def reports_to_participant_rows(reports):
     return pd.DataFrame(rows)
 
 
+def get_absent_info(report, roster):
+   
+    participants = report.get("participants", [])
+    if not isinstance(participants, list):
+        participants = []
+
+    report_absent_count = report.get("absent_count")
+    report_total_expected = report.get("total_expected")
+
+    if report_absent_count is not None and report_total_expected:
+        return int(report_absent_count), int(report_total_expected), False
+
+    if roster:
+        attended_names = {
+            p.get("name", "").strip().lower()
+            for p in participants
+            if isinstance(p, dict)
+        }
+        absent_count = sum(
+            1 for person in roster
+            if person.get("name", "").strip().lower() not in attended_names
+        )
+        return absent_count, len(roster), False
+
+    # last resort: Low Attendance stands in for Absent
+    low_count = sum(
+        1 for p in participants
+        if isinstance(p, dict) and p.get("status") == "Low Attendance"
+    )
+    return low_count, len(participants), True
+
+
 def reports_to_meeting_rows(reports, roster):
     """One row per meeting, with that meeting's average attendance rate
-    and true absent count (roster members missing from the meeting).
-    If no roster is set up yet, falls back to Low Attendance as a
-    rough stand-in for Absent."""
+    and absent count/rate (see get_absent_info for how Absent is worked out)."""
     rows = []
     for report in reports:
         participants = report.get("participants", [])
+        if not isinstance(participants, list):
+            participants = []
         if not participants:
             continue
-        avg_pct = sum(p.get("attendance_percentage", 0) for p in participants) / len(participants)
-        low_count = sum(1 for p in participants if p.get("status") == "Low Attendance")
 
-        if roster:
-            attended_names = {p.get("name", "").strip().lower() for p in participants}
-            absent_count = sum(
-                1 for person in roster
-                if person.get("name", "").strip().lower() not in attended_names
-            )
-            expected_total = len(roster)
-            absent_rate_pct = round((absent_count / expected_total) * 100, 1) if expected_total else 0.0
-        else:
-            absent_count = low_count
-            absent_rate_pct = round((low_count / len(participants)) * 100, 1)
+        percentages = [
+            float(p.get("attendance_percentage", 0))
+            for p in participants
+            if isinstance(p, dict) and p.get("attendance_percentage") is not None
+        ]
+        avg_pct = sum(percentages) / len(percentages) if percentages else 0.0
+
+        low_count = sum(
+            1 for p in participants
+            if isinstance(p, dict) and p.get("status") == "Low Attendance"
+        )
+
+        absent_count, expected_total, used_fallback = get_absent_info(report, roster)
+        absent_rate_pct = round((absent_count / expected_total) * 100, 1) if expected_total else 0.0
 
         rows.append(
             {
@@ -98,18 +137,20 @@ def reports_to_meeting_rows(reports, roster):
                 "absent_count": absent_count,
                 "low_attendees": low_count,
                 "total_participants": len(participants),
+                "used_low_attendance_fallback": used_fallback,
             }
         )
     df = pd.DataFrame(rows)
     if not df.empty:
-        df["date"] = pd.to_datetime(df["date"])
-        df = df.sort_values("date")
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+        df = df.dropna(subset=["date"])
+        df = df.sort_values(["date", "meeting_id"])
     return df
 
 
-# ---------------------------------------------------------------------
+
 # Load + guard
-# ---------------------------------------------------------------------
+
 
 reports = load_all_reports()
 roster = load_attendee_roster()
@@ -118,38 +159,41 @@ st.title("📊 Dashboard")
 
 if not reports:
     st.info(
-        "No meeting reports found yet. Once the bot records a meeting "
-        "(or sample reports are added to the `reports` folder), this "
-        "page will fill in automatically."
+        "No meeting reports found yet. Once the bot records a completed "
+        "meeting, this page will fill in automatically."
     )
+    st.caption(f"Looking for reports in: {REPORTS_DIR}")
     st.stop()
 
 meeting_df = reports_to_meeting_rows(reports, roster)
 participant_df = reports_to_participant_rows(reports)
 
-if roster:
-    st.caption(
-        "ℹ️ \"Absent Rate\" compares each meeting against the attendee list "
-        "set up on the **Manage Attendees** page — anyone expected who didn't "
-        "join at all counts as Absent."
-    )
-else:
+if meeting_df.empty:
+    st.info("Reports were found, but no valid meeting data could be loaded.")
+    st.stop()
+
+if meeting_df["used_low_attendance_fallback"].iloc[-1]:
     st.caption(
         "ℹ️ No attendee list set up yet, so \"Absent\" here is standing in for "
         "**Low Attendance** (joined but stayed for only a small part of the "
         "meeting). Add people on the **Manage Attendees** page for true Absent tracking."
     )
+else:
+    st.caption(
+        "ℹ️ \"Absent Rate\" compares each meeting against the expected attendee "
+        "list — anyone expected who didn't join at all counts as Absent."
+    )
 
-# ---------------------------------------------------------------------
+
 # 1. KPI cards (latest meeting vs the one before it)
-# ---------------------------------------------------------------------
+
 
 latest = meeting_df.iloc[-1]
 previous = meeting_df.iloc[-2] if len(meeting_df) >= 2 else None
 
 last_attendance_rate = latest["avg_attendance_pct"]
 last_absent_rate = latest["absent_rate_pct"]
-last_low_count = latest["low_attendees"]
+last_low_count = int(latest["low_attendees"])
 
 if previous is not None:
     attendance_delta = round(last_attendance_rate - previous["avg_attendance_pct"], 1)
@@ -180,7 +224,7 @@ with col2:
 with col3:
     st.metric(
         "Low Attendees",
-        int(last_low_count),
+        last_low_count,
         delta=low_count_delta if low_count_delta is not None else None,
         delta_color="inverse",
     )
@@ -189,9 +233,9 @@ st.caption(f"Based on the most recent meeting: **{latest['meeting_title']}** on 
 
 st.divider()
 
-# ---------------------------------------------------------------------
+
 # 2. Donut chart (latest meeting: present vs absent/low attendance)
-# ---------------------------------------------------------------------
+
 
 col_donut, col_line = st.columns([1, 2])
 
@@ -200,22 +244,21 @@ with col_donut:
 
     latest_meeting_id = latest["meeting_id"]
     latest_participants = participant_df[participant_df["meeting_id"] == latest_meeting_id]
-    latest_report = next((r for r in reports if r.get("meeting_id") == latest_meeting_id), None)
+    latest_report = next((r for r in reports if r.get("meeting_id") == latest_meeting_id), {})
 
     present_count = (latest_participants["status"] == "Present").sum()
-    low_attendance_count = (latest_participants["status"] == "Low Attendance").sum()
     partially_present_count = (latest_participants["status"] == "Partially Present").sum()
+    low_attendance_count = (latest_participants["status"] == "Low Attendance").sum()
 
-    if roster and latest_report:
-        attended_names = {p.get("name", "").strip().lower() for p in latest_report.get("participants", [])}
-        true_absent_count = sum(
-            1 for person in roster
-            if person.get("name", "").strip().lower() not in attended_names
-        )
+    absent_count = int(latest["absent_count"])
+
+    if not latest["used_low_attendance_fallback"]:
         donut_labels = ["Present", "Partially Present", "Low Attendance", "Absent"]
-        donut_values = [present_count, partially_present_count, low_attendance_count, true_absent_count]
+        donut_values = [present_count, partially_present_count, low_attendance_count, absent_count]
         donut_colors = ["#2ecc71", "#3498db", "#f39c12", "#e74c3c"]
-        total_people = len(roster)
+        total_people = int(latest.get("absent_count", 0)) + len(latest_participants)
+        # when roster is available, total expected = roster size
+        total_people = len(roster) if roster else total_people
     else:
         donut_labels = ["Present", "Partially Present", "Low Attendance (= Absent)"]
         donut_values = [present_count, partially_present_count, low_attendance_count]
@@ -248,9 +291,9 @@ with col_donut:
     )
     st.plotly_chart(donut_fig, use_container_width=True)
 
-# ---------------------------------------------------------------------
+
 # 3. Line chart: 7 / 30 / 90 day trend
-# ---------------------------------------------------------------------
+
 
 with col_line:
     st.subheader("Attendance Trend")
@@ -305,9 +348,9 @@ with col_line:
 
 st.divider()
 
-# ---------------------------------------------------------------------
+
 # 4. Calendar view
-# ---------------------------------------------------------------------
+
 
 st.subheader("Calendar")
 

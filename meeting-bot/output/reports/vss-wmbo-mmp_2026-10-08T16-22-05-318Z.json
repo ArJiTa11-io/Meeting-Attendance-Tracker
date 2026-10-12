@@ -1,0 +1,21 @@
+{
+  "meeting_id": "vss-wmbo-mmp",
+  "meeting_title": "vss-wmbo-mmp",
+  "date": "2026-10-08",
+  "start_time": "2026-10-08T16:22:05.318Z",
+  "end_time": "2026-10-08T16:49:38.893Z",
+  "duration_minutes": 27.6,
+  "total_participants": 0,
+  "low_attendance_count": 0,
+  "expected_attendees": [],
+  "present_attendees": [],
+  "absent_attendees": [],
+  "total_expected": 0,
+  "present_count": 0,
+  "absent_count": 0,
+  "attendance_rate": null,
+  "absent_rate": null,
+  "status": "completed",
+  "last_updated": "2026-10-08T16:49:38.893Z",
+  "participants": []
+}

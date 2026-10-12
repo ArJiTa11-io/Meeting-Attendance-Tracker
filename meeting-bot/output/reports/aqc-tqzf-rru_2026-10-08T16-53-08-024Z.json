@@ -1,0 +1,41 @@
+{
+  "meeting_id": "aqc-tqzf-rru",
+  "meeting_title": "aqc-tqzf-rru",
+  "date": "2026-10-08",
+  "start_time": "2026-10-08T16:53:08.024Z",
+  "end_time": "2026-10-08T16:55:04.885Z",
+  "duration_minutes": 1.9,
+  "total_participants": 1,
+  "low_attendance_count": 1,
+  "expected_attendees": [
+    "Divit Razdan"
+  ],
+  "present_attendees": [],
+  "absent_attendees": [
+    "Divit Razdan"
+  ],
+  "total_expected": 1,
+  "present_count": 0,
+  "absent_count": 1,
+  "attendance_rate": 0,
+  "absent_rate": 100,
+  "status": "completed",
+  "last_updated": "2026-10-08T16:55:04.885Z",
+  "participants": [
+    {
+      "name": "Div",
+      "email": "",
+      "join_time": "2026-10-08T16:53:08.064Z",
+      "leave_time": "2026-10-08T16:54:28.216Z",
+      "duration_minutes": 1.3,
+      "attendance_percentage": 68.6,
+      "status": "Low Attendance",
+      "sessions": [
+        {
+          "join_time": "2026-10-08T16:53:08.064Z",
+          "leave_time": "2026-10-08T16:54:28.216Z"
+        }
+      ]
+    }
+  ]
+}

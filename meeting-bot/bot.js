@@ -2,199 +2,382 @@ const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
 
-async function main() {
-    const meetLink = process.argv[2];
+const BROWSER_PROFILE = path.join(
+    __dirname,
+    "browser-profile"
+);
 
+const OUTPUT_DIRECTORY = path.join(
+    __dirname,
+    "output"
+);
+
+const ACTIVE_DIRECTORY = path.join(
+    OUTPUT_DIRECTORY,
+    "active"
+);
+
+const REPORTS_DIRECTORY = path.join(
+    OUTPUT_DIRECTORY,
+    "reports"
+);
+
+fs.mkdirSync(OUTPUT_DIRECTORY, {
+    recursive: true
+});
+
+fs.mkdirSync(ACTIVE_DIRECTORY, {
+    recursive: true
+});
+
+fs.mkdirSync(REPORTS_DIRECTORY, {
+    recursive: true
+});
+
+function getMeetingId(meetLink) {
     if (!meetLink) {
-        console.log("Please provide a Google Meet link.");
-        console.log(
-            "Example: node meeting-bot/bot.js https://meet.google.com/abc-defg-hij"
+        return null;
+    }
+
+    const match = String(meetLink).match(
+        /meet\.google\.com\/([^/?#]+)/
+    );
+
+    return match ? match[1] : null;
+}
+
+function calculateDurationSeconds(
+    sessions
+) {
+    return sessions.reduce(
+        (total, session) => {
+            if (!session.join_time) {
+                return total;
+            }
+
+            const joinTime =
+                new Date(
+                    session.join_time
+                ).getTime();
+
+            const leaveTime =
+                session.leave_time
+                    ? new Date(
+                          session.leave_time
+                      ).getTime()
+                    : Date.now();
+
+            return (
+                total +
+                Math.max(
+                    0,
+                    (leaveTime -
+                        joinTime) /
+                        1000
+                )
+            );
+        },
+        0
+    );
+}
+
+async function createBrowserContext() {
+    console.log(
+        "Starting authenticated Chrome context..."
+    );
+
+    const context =
+        await chromium.launchPersistentContext(
+            BROWSER_PROFILE,
+            {
+                headless: false,
+                channel: "chrome"
+            }
         );
-        return;
-    }
 
-    const meetingId = meetLink
-        .split("meet.google.com/")[1]
-        ?.split(/[/?#]/)[0];
-
-    if (!meetingId) {
-        console.log("Invalid Google Meet link.");
-        return;
-    }
-
-    const context = await chromium.launchPersistentContext(
-        "./meeting-bot/browser-profile",
+    await context.grantPermissions(
+        [
+            "camera",
+            "microphone"
+        ],
         {
-            headless: false,
-            channel: "chrome"
+            origin:
+                "https://meet.google.com"
         }
     );
 
-    const page = await context.newPage();
-
-    await page.goto(meetLink);
-
-    console.log("Meet opened.");
-
-    await page.waitForTimeout(5000);
-
-    try {
-        const micButton = page.getByRole("button", {
-            name: "Turn off microphone"
-        });
-
-        if (await micButton.isVisible()) {
-            await micButton.click();
-        }
-    } catch (error) {}
-
-    try {
-        const cameraButton = page.getByRole("button", {
-            name: "Turn off camera"
-        });
-
-        if (await cameraButton.isVisible()) {
-            await cameraButton.click();
-        }
-    } catch (error) {}
-
-    const joinButton = page.getByRole("button", {
-        name: /join now/i
-    });
-
-    await joinButton.waitFor({
-        state: "visible",
-        timeout: 15000
-    });
-
-    await joinButton.click();
-
-    console.log("Bot joined the meeting.");
-
-    const meetingPage = context.pages().find(
-        currentPage => currentPage.url().includes("meet.google.com")
+    console.log(
+        "Camera and microphone permissions granted."
     );
 
-    if (!meetingPage) {
-        console.log("Meeting page not found.");
-        return;
-    }
-
-    await meetingPage.waitForTimeout(5000);
-
-    await meetingPage.keyboard.press("Control+Alt+P");
-
-    await meetingPage.waitForTimeout(3000);
-
-    console.log("People panel opened.");
-
-    const outputDirectory = path.join(
-        __dirname,
-        "output"
+    console.log(
+        "Browser context ready."
     );
 
-    const reportsDirectory = path.join(
-        outputDirectory,
-        "reports"
-    );
+    return context;
+}
 
-    const outputFile = path.join(
-        outputDirectory,
-        "attendance.json"
-    );
+class MeetingTracker {
+    constructor({
+        page,
+        context,
+        meetLink,
+        meetingId,
+        meetingTitle = "",
+        expectedAttendees = []
+    }) {
+        this.page = page;
+        this.context = context;
+        this.meetLink = meetLink;
 
-    fs.mkdirSync(outputDirectory, {
-        recursive: true
-    });
+        this.meetingId =
+            meetingId ||
+            getMeetingId(meetLink);
 
-    fs.mkdirSync(reportsDirectory, {
-        recursive: true
-    });
+        this.meetingTitle =
+            meetingTitle ||
+            this.meetingId;
 
-    const startedAt = new Date();
-
-    const reportFileName =
-        `${meetingId}_${startedAt
-            .toISOString()
-            .replace(/[:.]/g, "-")}.json`;
-
-    const reportFile = path.join(
-        reportsDirectory,
-        reportFileName
-    );
-
-    const sessions = {};
-    const activeParticipants = new Map();
-
-    function createAttendanceData(status) {
-        return {
-            meeting_id: meetingId,
-            status: status,
-            started_at: startedAt.toISOString(),
-            last_updated: new Date().toISOString(),
-            participants: sessions
-        };
-    }
-
-    function saveAttendance(status = "active") {
-        const attendanceData =
-            createAttendanceData(status);
-
-        fs.writeFileSync(
-            outputFile,
-            JSON.stringify(
-                attendanceData,
-                null,
-                2
+        this.expectedAttendees =
+            Array.isArray(
+                expectedAttendees
             )
+                ? expectedAttendees
+                : [];
+
+        this.startedAt = null;
+        this.endedAt = null;
+
+        this.sessions = {};
+        this.activeParticipants =
+            new Map();
+
+        this.polling = false;
+        this.pollingPromise = null;
+        this.meetingEnded = false;
+
+        this.status = "starting";
+
+        this.activeFile = path.join(
+            ACTIVE_DIRECTORY,
+            `${this.meetingId}.json`
         );
 
-        fs.writeFileSync(
-            reportFile,
-            JSON.stringify(
-                attendanceData,
-                null,
-                2
-            )
-        );
+        this.reportFile = null;
     }
 
-    saveAttendance();
+    async prepareMeeting() {
+        if (!this.meetingId) {
+            throw new Error(
+                "Invalid Google Meet link."
+            );
+        }
 
-    while (true) {
-        const participants = await meetingPage
-            .locator("span.zWGUib")
-            .evaluateAll(elements =>
-                elements
-                    .map(
-                        element =>
-                            element.parentElement
-                                ?.innerText
-                                ?.trim()
-                    )
-                    .filter(Boolean)
+        console.log(
+            `[${this.meetingId}] Opening Google Meet...`
+        );
+
+        await this.page.goto(
+            this.meetLink,
+            {
+                waitUntil:
+                    "domcontentloaded",
+                timeout: 30000
+            }
+        );
+
+        console.log(
+            `[${this.meetingId}] Meet opened.`
+        );
+
+        await this.page.waitForTimeout(
+            5000
+        );
+
+        await this.disableMicrophone();
+
+        await this.disableCamera();
+
+        console.log(
+            `[${this.meetingId}] Looking for Join now button...`
+        );
+
+        const joinButton =
+            this.page.getByRole(
+                "button",
+                {
+                    name: /join now/i
+                }
             );
 
-        const currentParticipants =
-            new Set(participants);
+        await joinButton.waitFor({
+            state: "visible",
+            timeout: 15000
+        });
 
-        const now = new Date();
+        await joinButton.click();
 
-        for (const participant of currentParticipants) {
+        console.log(
+            `[${this.meetingId}] Bot joined the meeting.`
+        );
+
+        await this.page.waitForTimeout(
+            5000
+        );
+
+        await this.openPeoplePanel();
+
+        this.startedAt =
+            new Date();
+
+        this.status = "active";
+
+        const timestamp =
+            this.startedAt
+                .toISOString()
+                .replace(
+                    /[:.]/g,
+                    "-"
+                );
+
+        this.reportFile =
+            path.join(
+                REPORTS_DIRECTORY,
+                `${this.meetingId}_${timestamp}.json`
+            );
+
+        this.saveAttendance(
+            "active"
+        );
+    }
+
+    async disableMicrophone() {
+        try {
+            const micButton =
+                this.page.getByRole(
+                    "button",
+                    {
+                        name: "Turn off microphone"
+                    }
+                );
+
             if (
-                participant.includes("(You)") ||
-                participant === "Adhrav Rai"
+                await micButton.isVisible({
+                    timeout: 5000
+                })
+            ) {
+                await micButton.click();
+            }
+        } catch (error) {}
+    }
+
+    async disableCamera() {
+        try {
+            const cameraButton =
+                this.page.getByRole(
+                    "button",
+                    {
+                        name: "Turn off camera"
+                    }
+                );
+
+            if (
+                await cameraButton.isVisible({
+                    timeout: 5000
+                })
+            ) {
+                await cameraButton.click();
+            }
+        } catch (error) {}
+    }
+
+    async openPeoplePanel() {
+        try {
+            await this.page.keyboard.press(
+                "Control+Alt+P"
+            );
+
+            await this.page.waitForTimeout(
+                3000
+            );
+
+            console.log(
+                `[${this.meetingId}] People panel opened.`
+            );
+        } catch (error) {
+            console.log(
+                `[${this.meetingId}] Could not open People panel.`
+            );
+        }
+    }
+
+    async getParticipants() {
+        if (
+            !this.page ||
+            this.page.isClosed()
+        ) {
+            return [];
+        }
+
+        try {
+            return await this.page
+                .locator("span.zWGUib")
+                .evaluateAll(
+                    elements =>
+                        elements
+                            .map(
+                                element =>
+                                    element
+                                        .parentElement
+                                        ?.innerText
+                                        ?.trim()
+                            )
+                            .filter(Boolean)
+                );
+        } catch (error) {
+            return [];
+        }
+    }
+
+    async pollParticipants() {
+        const participants =
+            await this.getParticipants();
+
+        const currentParticipants =
+            new Set(
+                participants
+            );
+
+        const now =
+            new Date();
+
+        for (
+            const participant of
+            currentParticipants
+        ) {
+            if (
+                participant.includes(
+                    "(You)"
+                ) ||
+                participant ===
+                    "Adhrav Rai"
             ) {
                 continue;
             }
 
             if (
-                !activeParticipants.has(
+                !this.activeParticipants.has(
                     participant
                 )
             ) {
-                if (!sessions[participant]) {
-                    sessions[participant] = {
+                if (
+                    !this.sessions[
+                        participant
+                    ]
+                ) {
+                    this.sessions[
+                        participant
+                    ] = {
                         sessions: []
                     };
                 }
@@ -205,22 +388,22 @@ async function main() {
                     leave_time: null
                 };
 
-                sessions[
+                this.sessions[
                     participant
-                ].sessions.push(session);
+                ].sessions.push(
+                    session
+                );
 
-                activeParticipants.set(
+                this.activeParticipants.set(
                     participant,
                     session
                 );
 
                 console.log(
-                    "JOINED:",
+                    `[${this.meetingId}] JOINED:`,
                     participant,
                     session.join_time
                 );
-
-                saveAttendance();
             }
         }
 
@@ -228,7 +411,7 @@ async function main() {
             const [
                 participant,
                 session
-            ] of activeParticipants
+            ] of this.activeParticipants
         ) {
             if (
                 !currentParticipants.has(
@@ -239,50 +422,493 @@ async function main() {
                     now.toISOString();
 
                 console.log(
-                    "LEFT:",
+                    `[${this.meetingId}] LEFT:`,
                     participant,
                     session.leave_time
                 );
 
-                activeParticipants.delete(
+                this.activeParticipants.delete(
                     participant
                 );
-
-                saveAttendance();
             }
         }
 
-        saveAttendance();
-
-        console.log(
-            "\nCurrent participants:"
+        this.saveAttendance(
+            "active"
         );
+    }
 
-        for (
-            const participant of currentParticipants
-        ) {
-            console.log(
-                "-",
-                participant
-            );
+    getMeetingDurationSeconds() {
+        if (!this.startedAt) {
+            return 0;
         }
 
-        console.log(
-            "\nSession data:"
-        );
+        const endTime =
+            this.endedAt ||
+            new Date();
 
-        console.log(
+        return Math.max(
+            0,
+            (
+                endTime.getTime() -
+                this.startedAt.getTime()
+            ) / 1000
+        );
+    }
+
+    getParticipantReport(
+        participant,
+        data
+    ) {
+        const durationSeconds =
+            calculateDurationSeconds(
+                data.sessions
+            );
+
+        const meetingDurationSeconds =
+            this.getMeetingDurationSeconds();
+
+        const attendancePercentage =
+            meetingDurationSeconds > 0
+                ? Math.min(
+                      100,
+                      (
+                          durationSeconds /
+                          meetingDurationSeconds
+                      ) *
+                          100
+                  )
+                : 0;
+
+        let status =
+            "Low Attendance";
+
+        if (
+            attendancePercentage >=
+            90
+        ) {
+            status = "Present";
+        } else if (
+            attendancePercentage >=
+            75
+        ) {
+            status =
+                "Partially Present";
+        }
+
+        const firstSession =
+            data.sessions[0];
+
+        const lastSession =
+            data.sessions[
+                data.sessions.length - 1
+            ];
+
+        return {
+            name: participant,
+            email: "",
+            join_time:
+                firstSession?.join_time ||
+                null,
+            leave_time:
+                lastSession?.leave_time ||
+                null,
+            duration_minutes:
+                Number(
+                    (
+                        durationSeconds /
+                        60
+                    ).toFixed(1)
+                ),
+            attendance_percentage:
+                Number(
+                    attendancePercentage.toFixed(
+                        1
+                    )
+                ),
+            status,
+            sessions:
+                data.sessions
+        };
+    }
+
+    buildParticipants() {
+        return Object.entries(
+            this.sessions
+        ).map(
+            ([
+                participant,
+                data
+            ]) =>
+                this.getParticipantReport(
+                    participant,
+                    data
+                )
+        );
+    }
+
+    createReport(
+        status = "active",
+        endTime = null
+    ) {
+        if (
+            endTime
+        ) {
+            this.endedAt =
+                endTime;
+        }
+
+        const participants =
+            this.buildParticipants();
+
+        const meetingDurationSeconds =
+            this.getMeetingDurationSeconds();
+
+        const presentAttendees =
+            participants.filter(
+                participant =>
+                    participant.status ===
+                        "Present" ||
+                    participant.status ===
+                        "Partially Present"
+            );
+
+        const absentAttendees =
+            this.expectedAttendees.filter(
+                expected =>
+                    !participants.some(
+                        participant =>
+                            participant.name ===
+                            expected
+                    )
+            );
+
+        const totalExpected =
+            this.expectedAttendees.length;
+
+        const presentCount =
+            presentAttendees.length;
+
+        const absentCount =
+            absentAttendees.length;
+
+        const attendanceRate =
+            totalExpected > 0
+                ? Number(
+                      (
+                          (presentCount /
+                              totalExpected) *
+                          100
+                      ).toFixed(1)
+                  )
+                : null;
+
+        const absentRate =
+            totalExpected > 0
+                ? Number(
+                      (
+                          (absentCount /
+                              totalExpected) *
+                          100
+                      ).toFixed(1)
+                  )
+                : null;
+
+        const lowAttendanceCount =
+            participants.filter(
+                participant =>
+                    participant.status ===
+                    "Low Attendance"
+            ).length;
+
+        return {
+            meeting_id:
+                this.meetingId,
+
+            meeting_title:
+                this.meetingTitle,
+
+            date:
+                this.startedAt
+                    ? this.startedAt
+                          .toISOString()
+                          .split("T")[0]
+                    : null,
+
+            start_time:
+                this.startedAt
+                    ? this.startedAt.toISOString()
+                    : null,
+
+            end_time:
+                this.endedAt
+                    ? this.endedAt.toISOString()
+                    : null,
+
+            duration_minutes:
+                Number(
+                    (
+                        meetingDurationSeconds /
+                        60
+                    ).toFixed(1)
+                ),
+
+            total_participants:
+                participants.length,
+
+            low_attendance_count:
+                lowAttendanceCount,
+
+            expected_attendees:
+                this.expectedAttendees,
+
+            present_attendees:
+                presentAttendees.map(
+                    participant =>
+                        participant.name
+                ),
+
+            absent_attendees:
+                absentAttendees,
+
+            total_expected:
+                totalExpected,
+
+            present_count:
+                presentCount,
+
+            absent_count:
+                absentCount,
+
+            attendance_rate:
+                attendanceRate,
+
+            absent_rate:
+                absentRate,
+
+            status,
+
+            last_updated:
+                new Date().toISOString(),
+
+            participants
+        };
+    }
+
+    saveAttendance(
+        status = "active"
+    ) {
+        const report =
+            this.createReport(
+                status
+            );
+
+        fs.writeFileSync(
+            this.activeFile,
             JSON.stringify(
-                sessions,
+                report,
                 null,
                 2
             )
         );
 
-        await meetingPage.waitForTimeout(
-            10000
+        if (
+            this.reportFile
+        ) {
+            fs.writeFileSync(
+                this.reportFile,
+                JSON.stringify(
+                    report,
+                    null,
+                    2
+                )
+            );
+        }
+    }
+
+    async finalize(
+        status = "completed"
+    ) {
+        if (
+            this.meetingEnded
+        ) {
+            return this.createReport(
+                status,
+                this.endedAt
+            );
+        }
+
+        this.meetingEnded =
+            true;
+
+        this.polling =
+            false;
+
+        this.endedAt =
+            new Date();
+
+        for (
+            const [
+                participant,
+                session
+            ] of this.activeParticipants
+        ) {
+            if (
+                !session.leave_time
+            ) {
+                session.leave_time =
+                    this.endedAt.toISOString();
+            }
+
+            console.log(
+                `[${this.meetingId}] LEFT:`,
+                participant,
+                session.leave_time
+            );
+        }
+
+        this.activeParticipants.clear();
+
+        this.status =
+            status;
+
+        const report =
+            this.createReport(
+                status,
+                this.endedAt
+            );
+
+        fs.writeFileSync(
+            this.activeFile,
+            JSON.stringify(
+                report,
+                null,
+                2
+            )
         );
+
+        if (
+            this.reportFile
+        ) {
+            fs.writeFileSync(
+                this.reportFile,
+                JSON.stringify(
+                    report,
+                    null,
+                    2
+                )
+            );
+        }
+
+        if (
+            fs.existsSync(
+                this.activeFile
+            )
+        ) {
+            fs.unlinkSync(
+                this.activeFile
+            );
+        }
+
+        return report;
     }
 }
 
-main();
+async function main() {
+    const meetLink =
+        process.argv[2];
+
+    if (!meetLink) {
+        console.log(
+            "Please provide a Google Meet link."
+        );
+
+        console.log(
+            "Example: node meeting-bot/bot.js https://meet.google.com/abc-defg-hij"
+        );
+
+        return;
+    }
+
+    const meetingId =
+        getMeetingId(
+            meetLink
+        );
+
+    if (!meetingId) {
+        console.log(
+            "Invalid Google Meet link."
+        );
+
+        return;
+    }
+
+    const context =
+        await createBrowserContext();
+
+    const page =
+        await context.newPage();
+
+    const tracker =
+        new MeetingTracker({
+            page,
+            context,
+            meetLink,
+            meetingId,
+            meetingTitle:
+                meetingId,
+            expectedAttendees: []
+        });
+
+    try {
+        await tracker.prepareMeeting();
+
+        tracker.polling =
+            true;
+
+        while (
+            !tracker.meetingEnded
+        ) {
+            if (
+                tracker.page.isClosed()
+            ) {
+                break;
+            }
+
+            await tracker.pollParticipants();
+
+            await tracker.page.waitForTimeout(
+                10000
+            );
+        }
+    } catch (error) {
+        console.error(
+            "Bot error:",
+            error
+        );
+    } finally {
+        await tracker.finalize(
+            "completed"
+        );
+
+        if (
+            !page.isClosed()
+        ) {
+            await page.close();
+        }
+
+        await context.close();
+    }
+}
+
+module.exports = {
+    MeetingTracker,
+    createBrowserContext,
+    getMeetingId
+};
+
+if (
+    require.main === module
+) {
+    main();
+}
