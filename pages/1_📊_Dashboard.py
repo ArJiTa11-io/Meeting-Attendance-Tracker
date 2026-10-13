@@ -14,13 +14,12 @@ ATTENDEES_FILE = os.path.join(PROJECT_ROOT, "attendees.json")
 st.set_page_config(page_title="Dashboard", page_icon="📊", layout="wide")
 
 
-
 # Data loading
 
 
 @st.cache_data(ttl=2)
 def load_all_reports():
-    """Reads every report JSON file in meeting-bot/output/reports."""
+    
     reports = []
     for path in sorted(glob.glob(os.path.join(REPORTS_DIR, "*.json"))):
         try:
@@ -70,7 +69,7 @@ def reports_to_participant_rows(reports):
 
 
 def get_absent_info(report, roster):
-   
+  
     participants = report.get("participants", [])
     if not isinstance(participants, list):
         participants = []
@@ -93,7 +92,7 @@ def get_absent_info(report, roster):
         )
         return absent_count, len(roster), False
 
-    # last resort: Low Attendance stands in for Absent
+   
     low_count = sum(
         1 for p in participants
         if isinstance(p, dict) and p.get("status") == "Low Attendance"
@@ -172,6 +171,12 @@ if meeting_df.empty:
     st.info("Reports were found, but no valid meeting data could be loaded.")
     st.stop()
 
+
+day_lookup = {row["date"].date(): row for _, row in meeting_df.iterrows()}
+
+if "selected_day" not in st.session_state:
+    st.session_state.selected_day = None
+
 if meeting_df["used_low_attendance_fallback"].iloc[-1]:
     st.caption(
         "ℹ️ No attendee list set up yet, so \"Absent\" here is standing in for "
@@ -185,7 +190,7 @@ else:
     )
 
 
-# 1. KPI cards (latest meeting vs the one before it)
+# 1. KPI cards 
 
 
 latest = meeting_df.iloc[-1]
@@ -240,30 +245,35 @@ st.divider()
 col_donut, col_line = st.columns([1, 2])
 
 with col_donut:
-    st.subheader("Present vs Absent")
+ 
+    if st.session_state.selected_day is not None and st.session_state.selected_day in day_lookup:
+        donut_row = day_lookup[st.session_state.selected_day]
+        st.subheader(f"Present vs Absent — {st.session_state.selected_day.strftime('%d %b %Y')}")
+    else:
+        donut_row = latest
+        st.subheader("Present vs Absent — Latest Meeting")
 
-    latest_meeting_id = latest["meeting_id"]
-    latest_participants = participant_df[participant_df["meeting_id"] == latest_meeting_id]
-    latest_report = next((r for r in reports if r.get("meeting_id") == latest_meeting_id), {})
+    donut_meeting_id = donut_row["meeting_id"]
+    donut_participants = participant_df[participant_df["meeting_id"] == donut_meeting_id]
 
-    present_count = (latest_participants["status"] == "Present").sum()
-    partially_present_count = (latest_participants["status"] == "Partially Present").sum()
-    low_attendance_count = (latest_participants["status"] == "Low Attendance").sum()
+    present_count = (donut_participants["status"] == "Present").sum()
+    partially_present_count = (donut_participants["status"] == "Partially Present").sum()
+    low_attendance_count = (donut_participants["status"] == "Low Attendance").sum()
 
-    absent_count = int(latest["absent_count"])
+    absent_count = int(donut_row["absent_count"])
 
-    if not latest["used_low_attendance_fallback"]:
+    if not donut_row["used_low_attendance_fallback"]:
         donut_labels = ["Present", "Partially Present", "Low Attendance", "Absent"]
         donut_values = [present_count, partially_present_count, low_attendance_count, absent_count]
         donut_colors = ["#2ecc71", "#3498db", "#f39c12", "#e74c3c"]
-        total_people = int(latest.get("absent_count", 0)) + len(latest_participants)
-        # when roster is available, total expected = roster size
+        total_people = int(donut_row.get("absent_count", 0)) + len(donut_participants)
+        
         total_people = len(roster) if roster else total_people
     else:
         donut_labels = ["Present", "Partially Present", "Low Attendance (= Absent)"]
         donut_values = [present_count, partially_present_count, low_attendance_count]
         donut_colors = ["#2ecc71", "#3498db", "#e74c3c"]
-        total_people = len(latest_participants)
+        total_people = len(donut_participants)
 
     donut_fig = go.Figure(
         data=[
@@ -290,7 +300,6 @@ with col_donut:
         ],
     )
     st.plotly_chart(donut_fig, use_container_width=True)
-
 
 # 3. Line chart: 7 / 30 / 90 day trend
 
@@ -354,16 +363,9 @@ st.divider()
 
 st.subheader("Calendar")
 
-day_lookup = {
-    row["date"].date(): row for _, row in meeting_df.iterrows()
-}
-
 if "calendar_month" not in st.session_state:
     last_meeting_date = meeting_df.iloc[-1]["date"]
     st.session_state.calendar_month = last_meeting_date.replace(day=1)
-
-if "selected_day" not in st.session_state:
-    st.session_state.selected_day = None
 
 nav_prev, nav_label, nav_next = st.columns([1, 3, 1])
 
