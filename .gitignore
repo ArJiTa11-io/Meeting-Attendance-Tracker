@@ -1,9 +1,22 @@
+# Python
 .venv/
-credentials.json
-.env
+venv/
 __pycache__/
 *.pyc
-meeting-bot/browser-profile/
+
+# Node
 node_modules/
 
+# Secrets
+credentials.json
+.env
+
+# Browser sessions (Google sign-in data), never commit these
+meeting-bot/browser-profile/
+meeting-bot/browser-profiles/
+meeting-bot/test-browser-profile/
+
+# Generated bot output (real attendee data)
+meeting-bot/output/active/
+meeting-bot/output/reports/
 meeting-bot/output/attendance.json
