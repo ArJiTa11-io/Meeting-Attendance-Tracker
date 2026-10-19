@@ -68,58 +68,59 @@ Install the following on the host machine:
 - Google Chrome or a compatible Chromium browser supported by your Playwright setup
 - A persistent writable disk for the browser profile and JSON reports
 
-## 💻 Local setup on Windows
+💻 Local setup on Windows 0. Before you start 🧱
 
-### 1. Clone the repository 📥
+Install these first, then check them in a terminal:
 
-```powershell
-git clone <YOUR_REPOSITORY_URL>
-cd Meeting-Attendance-Tracker
-```
+powershell
+py --version
+node --version
+git --version
 
-### 2. Create and activate a Python environment 🐍
+Each command should print a version number. If one says "not recognized", install that tool (Python 3.10+, Node.js LTS, or Git) and open a new terminal.
 
-```powershell
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
+💡 Tip: every command below must be run inside the project folder. To open a folder in the terminal, type cd followed by a space and the folder path, for example cd D:\projects\Meeting-Attendance-Tracker. Typing the path alone does not work and gives a "term is not recognized" error. In VS Code you can also right-click the folder and choose Open in Integrated Terminal.
+
+1. Clone the repository 📥
+   powershell
+   git clone <YOUR_REPOSITORY_URL>
+   cd Meeting-Attendance-Tracker
+2. Create and activate a Python environment 🐍
+   powershell
+   py -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   python -m pip install --upgrade pip
+   pip install -r requirements.txt
 
 If PowerShell blocks activation, run the environment's Python directly or follow your organization's execution-policy guidance. Do not disable security controls globally just to activate a virtual environment.
 
-### 3. Install Node.js dependencies 📦
+3. Install Node.js dependencies 📦
+   powershell
+   npm install
 
-```powershell
-npm install
-```
+Run this from the directory containing package.json. If the Node package file is inside meeting-bot, run npm install from that directory instead.
 
-Run this from the directory containing `package.json`. If the Node package file is inside `meeting-bot`, run `npm install` from that directory instead.
-
-### 4. Prepare the authenticated browser profile 🔐
+4. Prepare the authenticated browser profile 🔐
 
 The bot uses a persistent browser profile so it can reuse a signed-in Google account. On the machine that will run the bot:
 
-1. Start the browser using the project's configured persistent profile.
-2. Sign in to the Google account that is permitted to join the intended meetings.
-3. Complete any required account security checks.
-4. Close the browser cleanly before starting the manager.
+Start the browser using the project's configured persistent profile.
+Sign in to the Google account that is permitted to join the intended meetings.
+Complete any required account security checks.
+Close the browser cleanly before starting the manager.
 
-The exact command for initializing the profile depends on the checked-in `bot.js`/`meeting-manager.js` implementation. Do not copy a personal browser profile from another computer. Never commit `meeting-bot/browser-profile/` or credentials/cookies to Git.
+The exact command for initializing the profile depends on the checked-in bot.js/meeting-manager.js implementation. Do not copy a personal browser profile from another computer. Never commit meeting-bot/browser-profile/ or credentials/cookies to Git.
 
-### 5. Start the app 🚀
+5. Start the app 🚀
+   powershell
+   streamlit run app.py
 
-```powershell
-streamlit run app.py
-```
-
-Open the local URL printed by Streamlit, commonly `http://localhost:8501`.
+Open the local URL printed by Streamlit, commonly http://localhost:8501.
 
 In the current setup, the Start Meeting Bot page is expected to start the Node.js manager if it is not already running. If your current version requires manual startup, open a second terminal and run:
 
-```powershell
+powershell
 node meeting-bot/meeting-manager.js
-```
 
 Use the startup approach implemented in your current branch; avoid starting multiple manager processes against the same browser profile.
 
