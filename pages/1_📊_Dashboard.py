@@ -1,7 +1,9 @@
+
 import glob
 import json
 import os
-from datetime import datetime, timedelta
+import calendar
+from datetime import date, datetime, timedelta
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -14,142 +16,200 @@ ATTENDEES_FILE = os.path.join(PROJECT_ROOT, "attendees.json")
 st.set_page_config(page_title="Dashboard", page_icon="📊", layout="wide")
 
 
-# Data loading
-
+# -------------------- Data loading --------------------
 
 @st.cache_data(ttl=2)
 def load_all_reports():
-    
     reports = []
-    for path in sorted(glob.glob(os.path.join(REPORTS_DIR, "*.json"))):
+    for path in glob.glob(os.path.join(REPORTS_DIR, "*.json")):
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                report = json.load(f)
-                if isinstance(report, dict):
-                    reports.append(report)
+            with open(path, "r", encoding="utf-8") as file:
+                report = json.load(file)
+            if isinstance(report, dict):
+                report["_source_file"] = os.path.basename(path)
+                reports.append(report)
         except (json.JSONDecodeError, OSError):
             continue
+
+    reports.sort(key=report_sort_key)
     return reports
+
+
+def report_sort_key(report):
+    date_text = str(report.get("date") or "")
+    start_text = str(report.get("start_time") or "")
+    timestamp = pd.to_datetime(f"{date_text} {start_text}", errors="coerce")
+    return timestamp if not pd.isna(timestamp) else pd.Timestamp.min
 
 
 @st.cache_data(ttl=30)
 def load_attendee_roster():
-    
     if not os.path.exists(ATTENDEES_FILE):
         return []
     try:
-        with open(ATTENDEES_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+        with open(ATTENDEES_FILE, "r", encoding="utf-8") as file:
+            data = json.load(file)
+        return normalize_roster(data)
     except (json.JSONDecodeError, OSError):
         return []
 
 
-def reports_to_participant_rows(reports):
-    """Flattens reports into one row per participant per meeting."""
-    rows = []
-    for report in reports:
-        meeting_date = report.get("date")
-        participants = report.get("participants", [])
-        if not isinstance(participants, list):
+def normalize_name(value):
+    return " ".join(str(value or "").split()).casefold()
+
+
+def normalize_roster(raw):
+    if not isinstance(raw, list):
+        return []
+
+    people = []
+    seen = set()
+
+    for item in raw:
+        if isinstance(item, str):
+            name = item.strip()
+        elif isinstance(item, dict):
+            name = str(item.get("name") or item.get("display_name") or "").strip()
+        else:
             continue
-        for participant in participants:
-            if not isinstance(participant, dict):
-                continue
-            rows.append(
-                {
-                    "meeting_id": report.get("meeting_id"),
-                    "meeting_title": report.get("meeting_title"),
-                    "date": meeting_date,
-                    "name": participant.get("name"),
-                    "attendance_percentage": participant.get("attendance_percentage", 0),
-                    "status": participant.get("status"),
-                }
-            )
-    return pd.DataFrame(rows)
+
+        key = normalize_name(name)
+        if name and key and key not in seen:
+            people.append({"name": name})
+            seen.add(key)
+
+    return people
 
 
-def get_absent_info(report, roster):
-  
-    participants = report.get("participants", [])
-    if not isinstance(participants, list):
-        participants = []
+def normalize_participants(raw):
+    if isinstance(raw, list):
+        return [p for p in raw if isinstance(p, dict)]
 
-    report_absent_count = report.get("absent_count")
-    report_total_expected = report.get("total_expected")
+    if isinstance(raw, dict):
+        result = []
+        for name, details in raw.items():
+            details = details if isinstance(details, dict) else {}
+            result.append({"name": name, **details})
+        return result
 
-    if report_absent_count is not None and report_total_expected:
-        return int(report_absent_count), int(report_total_expected), False
+    return []
 
-    if roster:
-        attended_names = {
-            p.get("name", "").strip().lower()
-            for p in participants
-            if isinstance(p, dict)
-        }
-        absent_count = sum(
-            1 for person in roster
-            if person.get("name", "").strip().lower() not in attended_names
-        )
-        return absent_count, len(roster), False
 
-   
+def expected_names_for_report(report, global_roster):
+    report_roster = normalize_roster(report.get("expected_attendees"))
+    if report_roster:
+        return report_roster
+    return global_roster
+
+
+def attendance_metrics(report, global_roster):
+    participants = normalize_participants(report.get("participants"))
+    expected = expected_names_for_report(report, global_roster)
+
+    attended_keys = {
+        normalize_name(p.get("name"))
+        for p in participants
+        if normalize_name(p.get("name"))
+    }
+
+    if expected:
+        expected_keys = {normalize_name(p["name"]) for p in expected}
+        present_count = sum(1 for key in expected_keys if key in attended_keys)
+        absent_names = [
+            person["name"]
+            for person in expected
+            if normalize_name(person["name"]) not in attended_keys
+        ]
+        attendance_rate = round(present_count / len(expected_keys) * 100, 1) if expected_keys else None
+        absent_rate = round(len(absent_names) / len(expected_keys) * 100, 1) if expected_keys else None
+        absent_count = len(absent_names)
+        absent_is_known = True
+    else:
+        present_count = len(attended_keys)
+        absent_names = []
+        attendance_rate = None
+        absent_rate = None
+        absent_count = None
+        absent_is_known = False
+
     low_count = sum(
         1 for p in participants
-        if isinstance(p, dict) and p.get("status") == "Low Attendance"
+        if str(p.get("status") or "").strip().casefold() == "low attendance"
     )
-    return low_count, len(participants), True
+    partial_count = sum(
+        1 for p in participants
+        if str(p.get("status") or "").strip().casefold() == "partially present"
+    )
+    full_count = sum(
+        1 for p in participants
+        if str(p.get("status") or "").strip().casefold() == "present"
+    )
 
-
-def reports_to_meeting_rows(reports, roster):
-    """One row per meeting, with that meeting's average attendance rate
-    and absent count/rate (see get_absent_info for how Absent is worked out)."""
-    rows = []
-    for report in reports:
-        participants = report.get("participants", [])
-        if not isinstance(participants, list):
-            participants = []
-        if not participants:
+    percentages = []
+    for participant in participants:
+        try:
+            value = participant.get("attendance_percentage")
+            if value is not None:
+                percentages.append(float(value))
+        except (TypeError, ValueError):
             continue
 
-        percentages = [
-            float(p.get("attendance_percentage", 0))
-            for p in participants
-            if isinstance(p, dict) and p.get("attendance_percentage") is not None
-        ]
-        avg_pct = sum(percentages) / len(percentages) if percentages else 0.0
+    # This is a separate metric, not the expected-attendee attendance rate.
+    avg_participant_pct = round(sum(percentages) / len(percentages), 1) if percentages else None
 
-        low_count = sum(
-            1 for p in participants
-            if isinstance(p, dict) and p.get("status") == "Low Attendance"
-        )
+    return {
+        "participants": participants,
+        "expected": expected,
+        "attendance_rate": attendance_rate,
+        "absent_rate": absent_rate,
+        "absent_count": absent_count,
+        "absent_is_known": absent_is_known,
+        "present_count": present_count,
+        "low_count": low_count,
+        "partial_count": partial_count,
+        "full_count": full_count,
+        "participant_count": len(participants),
+        "avg_participant_pct": avg_participant_pct,
+    }
 
-        absent_count, expected_total, used_fallback = get_absent_info(report, roster)
-        absent_rate_pct = round((absent_count / expected_total) * 100, 1) if expected_total else 0.0
 
-        rows.append(
-            {
-                "meeting_id": report.get("meeting_id"),
-                "meeting_title": report.get("meeting_title"),
-                "date": report.get("date"),
-                "avg_attendance_pct": round(avg_pct, 1),
-                "absent_rate_pct": absent_rate_pct,
-                "absent_count": absent_count,
-                "low_attendees": low_count,
-                "total_participants": len(participants),
-                "used_low_attendance_fallback": used_fallback,
-            }
-        )
+def make_meeting_rows(reports, roster):
+    rows = []
+    for index, report in enumerate(reports):
+        metrics = attendance_metrics(report, roster)
+        raw_date = report.get("date")
+        parsed_date = pd.to_datetime(raw_date, errors="coerce")
+        if pd.isna(parsed_date):
+            parsed_date = pd.to_datetime(
+                f"{raw_date or ''} {report.get('start_time') or ''}",
+                errors="coerce",
+            )
+        if pd.isna(parsed_date):
+            continue
+
+        rows.append({
+            "report_index": index,
+            "meeting_id": str(report.get("meeting_id") or ""),
+            "meeting_title": str(report.get("meeting_title") or report.get("meeting_id") or "Meeting"),
+            "date": parsed_date,
+            "attendance_rate": metrics["attendance_rate"],
+            "absent_rate": metrics["absent_rate"],
+            "absent_count": metrics["absent_count"],
+            "absent_is_known": metrics["absent_is_known"],
+            "low_count": metrics["low_count"],
+            "participant_count": metrics["participant_count"],
+            "present_count": metrics["present_count"],
+            "avg_participant_pct": metrics["avg_participant_pct"],
+            "status": str(report.get("status") or "completed"),
+        })
+
     df = pd.DataFrame(rows)
     if not df.empty:
-        df["date"] = pd.to_datetime(df["date"], errors="coerce")
-        df = df.dropna(subset=["date"])
-        df = df.sort_values(["date", "meeting_id"])
+        df = df.sort_values(["date", "report_index"]).reset_index(drop=True)
     return df
 
 
-
-# Load + guard
-
+# -------------------- Dashboard --------------------
 
 reports = load_all_reports()
 roster = load_attendee_roster()
@@ -157,290 +217,277 @@ roster = load_attendee_roster()
 st.title("📊 Dashboard")
 
 if not reports:
-    st.info(
-        "No meeting reports found yet. Once the bot records a completed "
-        "meeting, this page will fill in automatically."
-    )
+    st.info("No meeting reports found yet. Once the bot records a meeting, this page will update automatically.")
     st.caption(f"Looking for reports in: {REPORTS_DIR}")
     st.stop()
 
-meeting_df = reports_to_meeting_rows(reports, roster)
-participant_df = reports_to_participant_rows(reports)
+meeting_df = make_meeting_rows(reports, roster)
 
 if meeting_df.empty:
-    st.info("Reports were found, but no valid meeting data could be loaded.")
+    st.info("Reports were found, but no valid meeting dates could be read.")
+    st.caption(f"Reports folder: {REPORTS_DIR}")
     st.stop()
-
-
-day_lookup = {row["date"].date(): row for _, row in meeting_df.iterrows()}
 
 if "selected_day" not in st.session_state:
     st.session_state.selected_day = None
-
-if meeting_df["used_low_attendance_fallback"].iloc[-1]:
-    st.caption(
-        "ℹ️ No attendee list set up yet, so \"Absent\" here is standing in for "
-        "**Low Attendance** (joined but stayed for only a small part of the "
-        "meeting). Add people on the **Manage Attendees** page for true Absent tracking."
-    )
-else:
-    st.caption(
-        "ℹ️ \"Absent Rate\" compares each meeting against the expected attendee "
-        "list — anyone expected who didn't join at all counts as Absent."
-    )
-
-
-# 1. KPI cards 
-
+if "trend_range" not in st.session_state:
+    st.session_state.trend_range = 30
+if "calendar_month" not in st.session_state:
+    latest_date = meeting_df.iloc[-1]["date"]
+    st.session_state.calendar_month = latest_date.to_pydatetime().replace(day=1)
 
 latest = meeting_df.iloc[-1]
-previous = meeting_df.iloc[-2] if len(meeting_df) >= 2 else None
+previous = meeting_df.iloc[-2] if len(meeting_df) > 1 else None
 
-last_attendance_rate = latest["avg_attendance_pct"]
-last_absent_rate = latest["absent_rate_pct"]
-last_low_count = int(latest["low_attendees"])
-
-if previous is not None:
-    attendance_delta = round(last_attendance_rate - previous["avg_attendance_pct"], 1)
-    absent_delta = round(last_absent_rate - previous["absent_rate_pct"], 1)
-    low_count_delta = int(last_low_count - previous["low_attendees"])
+if roster or any(normalize_roster(r.get("expected_attendees")) for r in reports):
+    st.caption(
+        '“Attendance Rate” means the percentage of expected attendees who joined. '
+        '“Absent Rate” means the percentage of expected attendees who never joined.'
+    )
 else:
-    attendance_delta = None
-    absent_delta = None
-    low_count_delta = None
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.metric(
-        "Last Recorded Attendance Rate",
-        f"{last_attendance_rate}%",
-        delta=f"{attendance_delta}%" if attendance_delta is not None else None,
+    st.caption(
+        "No expected-attendee roster is available. Attendance Rate and Absent Rate "
+        "are shown as N/A until a roster is configured. Low Attendance counts detected "
+        "participants whose recorded status is Low Attendance."
     )
 
-with col2:
+kpi1, kpi2, kpi3 = st.columns(3)
+
+with kpi1:
+    value = latest["attendance_rate"]
+    delta = None
+    if previous is not None and pd.notna(value) and pd.notna(previous["attendance_rate"]):
+        delta = f"{value - previous['attendance_rate']:+.1f}%"
+    st.metric("Last Recorded Attendance Rate", f"{value:.1f}%" if pd.notna(value) else "N/A", delta=delta)
+
+with kpi2:
+    value = latest["absent_rate"]
+    delta = None
+    if previous is not None and pd.notna(value) and pd.notna(previous["absent_rate"]):
+        delta = f"{value - previous['absent_rate']:+.1f}%"
     st.metric(
         "Absent Rate",
-        f"{last_absent_rate}%",
-        delta=f"{absent_delta}%" if absent_delta is not None else None,
+        f"{value:.1f}%" if pd.notna(value) else "N/A",
+        delta=delta,
         delta_color="inverse",
     )
 
-with col3:
-    st.metric(
-        "Low Attendees",
-        last_low_count,
-        delta=low_count_delta if low_count_delta is not None else None,
-        delta_color="inverse",
-    )
+with kpi3:
+    delta = int(latest["low_count"] - previous["low_count"]) if previous is not None else None
+    st.metric("Low Attendees", int(latest["low_count"]), delta=delta, delta_color="inverse")
 
-st.caption(f"Based on the most recent meeting: **{latest['meeting_title']}** on {latest['date'].strftime('%d %b %Y')}")
-
+st.caption(
+    f"Most recent report: **{latest['meeting_title']}** · "
+    f"{latest['date'].strftime('%d %b %Y')} · {latest['status']}"
+)
 st.divider()
 
 
-# 2. Donut chart (latest meeting: present vs absent/low attendance)
-
+# -------------------- Present vs absent donut --------------------
 
 col_donut, col_line = st.columns([1, 2])
 
+day_lookup = {}
+for _, row in meeting_df.iterrows():
+    day_lookup[row["date"].date()] = row
+
 with col_donut:
- 
-    if st.session_state.selected_day is not None and st.session_state.selected_day in day_lookup:
-        donut_row = day_lookup[st.session_state.selected_day]
-        st.subheader(f"Present vs Absent — {st.session_state.selected_day.strftime('%d %b %Y')}")
+    selected_day = st.session_state.selected_day
+    if selected_day in day_lookup:
+        donut_row = day_lookup[selected_day]
+        st.subheader(f"Attendance Breakdown — {selected_day.strftime('%d %b %Y')}")
     else:
         donut_row = latest
-        st.subheader("Present vs Absent — Latest Meeting")
+        st.subheader("Attendance Breakdown — Latest Meeting")
 
-    donut_meeting_id = donut_row["meeting_id"]
-    donut_participants = participant_df[participant_df["meeting_id"] == donut_meeting_id]
+    report = reports[int(donut_row["report_index"])]
+    metrics = attendance_metrics(report, roster)
 
-    present_count = (donut_participants["status"] == "Present").sum()
-    partially_present_count = (donut_participants["status"] == "Partially Present").sum()
-    low_attendance_count = (donut_participants["status"] == "Low Attendance").sum()
-
-    absent_count = int(donut_row["absent_count"])
-
-    if not donut_row["used_low_attendance_fallback"]:
-        donut_labels = ["Present", "Partially Present", "Low Attendance", "Absent"]
-        donut_values = [present_count, partially_present_count, low_attendance_count, absent_count]
-        donut_colors = ["#2ecc71", "#3498db", "#f39c12", "#e74c3c"]
-        total_people = int(donut_row.get("absent_count", 0)) + len(donut_participants)
-        
-        total_people = len(roster) if roster else total_people
-    else:
-        donut_labels = ["Present", "Partially Present", "Low Attendance (= Absent)"]
-        donut_values = [present_count, partially_present_count, low_attendance_count]
-        donut_colors = ["#2ecc71", "#3498db", "#e74c3c"]
-        total_people = len(donut_participants)
-
-    donut_fig = go.Figure(
-        data=[
-            go.Pie(
-                labels=donut_labels,
-                values=donut_values,
-                hole=0.6,
-                marker=dict(colors=donut_colors),
-            )
+    if metrics["expected"]:
+        absent = metrics["absent_count"] or 0
+        present = metrics["present_count"]
+        values = [present, absent]
+        labels = ["Expected attendees present", "Expected attendees absent"]
+        colors = ["#2ecc71", "#e74c3c"]
+        total_people = len(metrics["expected"])
+    elif metrics["participant_count"]:
+        values = [
+            metrics["full_count"],
+            metrics["partial_count"],
+            metrics["low_count"],
         ]
-    )
-    donut_fig.update_layout(
-        showlegend=True,
-        margin=dict(t=10, b=10, l=10, r=10),
-        height=320,
-        annotations=[
-            dict(
+        labels = ["Present", "Partially Present", "Low Attendance"]
+        colors = ["#2ecc71", "#3498db", "#f39c12"]
+        total_people = metrics["participant_count"]
+    else:
+        values, labels, colors, total_people = [], [], [], 0
+
+    if values and sum(values) > 0:
+        donut_fig = go.Figure(data=[go.Pie(
+            labels=labels,
+            values=values,
+            hole=0.6,
+            marker=dict(colors=colors),
+        )])
+        donut_fig.update_layout(
+            showlegend=True,
+            margin=dict(t=10, b=10, l=10, r=10),
+            height=320,
+            annotations=[dict(
                 text=f"{total_people}<br>people",
-                x=0.5,
-                y=0.5,
-                font_size=16,
-                showarrow=False,
-            )
-        ],
-    )
-    st.plotly_chart(donut_fig, use_container_width=True)
+                x=0.5, y=0.5, font_size=16, showarrow=False,
+            )],
+        )
+        st.plotly_chart(donut_fig, use_container_width=True)
+    else:
+        st.info("No participant or expected-attendee data is available for this report.")
 
-# 3. Line chart: 7 / 30 / 90 day trend
 
+# -------------------- Attendance trend --------------------
 
 with col_line:
     st.subheader("Attendance Trend")
-
-    if "trend_range" not in st.session_state:
-        st.session_state.trend_range = 30
-
-    btn_cols = st.columns(3)
-    labels = {"7D": 7, "30D": 30, "90D": 90}
-    for btn_col, (label, days) in zip(btn_cols, labels.items()):
-        with btn_col:
+    button_cols = st.columns(3)
+    for col, (label, days) in zip(button_cols, [("7D", 7), ("30D", 30), ("90D", 90)]):
+        with col:
             if st.button(
                 label,
+                key=f"trend_{days}",
                 use_container_width=True,
                 type="primary" if st.session_state.trend_range == days else "secondary",
             ):
                 st.session_state.trend_range = days
                 st.rerun()
 
-    cutoff = datetime.now() - timedelta(days=st.session_state.trend_range)
+    cutoff = pd.Timestamp.now() - pd.Timedelta(days=st.session_state.trend_range)
     trend_df = meeting_df[meeting_df["date"] >= cutoff].copy()
 
     if trend_df.empty:
         st.info("No meetings in this time range yet.")
     else:
-        line_fig = go.Figure()
-        line_fig.add_trace(
-            go.Scatter(
-                x=trend_df["date"],
-                y=trend_df["avg_attendance_pct"],
-                mode="lines+markers",
-                name="Attendance Rate %",
+        fig = go.Figure()
+        if trend_df["attendance_rate"].notna().any():
+            fig.add_trace(go.Scatter(
+                x=trend_df["date"], y=trend_df["attendance_rate"],
+                mode="lines+markers", name="Attendance Rate %",
                 line=dict(color="#2ecc71"),
-            )
-        )
-        line_fig.add_trace(
-            go.Scatter(
-                x=trend_df["date"],
-                y=trend_df["absent_rate_pct"],
-                mode="lines+markers",
-                name="Absent Rate %",
+                customdata=trend_df["meeting_title"],
+                hovertemplate="%{x|%d %b %Y}<br>%{customdata}<br>Attendance: %{y:.1f}%<extra></extra>",
+            ))
+        if trend_df["absent_rate"].notna().any():
+            fig.add_trace(go.Scatter(
+                x=trend_df["date"], y=trend_df["absent_rate"],
+                mode="lines+markers", name="Absent Rate %",
                 line=dict(color="#e74c3c"),
+                customdata=trend_df["meeting_title"],
+                hovertemplate="%{x|%d %b %Y}<br>%{customdata}<br>Absent: %{y:.1f}%<extra></extra>",
+            ))
+        if not fig.data:
+            st.info("Add an expected-attendee roster to display attendance and absence rates.")
+        else:
+            fig.update_layout(
+                margin=dict(t=10, b=10, l=10, r=10),
+                height=320,
+                yaxis_title="Percentage",
+                yaxis=dict(range=[0, 100]),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02),
             )
-        )
-        line_fig.update_layout(
-            margin=dict(t=10, b=10, l=10, r=10),
-            height=320,
-            yaxis_title="%",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02),
-        )
-        st.plotly_chart(line_fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True)
 
 st.divider()
 
 
-# 4. Calendar view
-
+# -------------------- Calendar --------------------
 
 st.subheader("Calendar")
 
-if "calendar_month" not in st.session_state:
-    last_meeting_date = meeting_df.iloc[-1]["date"]
-    st.session_state.calendar_month = last_meeting_date.replace(day=1)
-
+current_month = st.session_state.calendar_month
 nav_prev, nav_label, nav_next = st.columns([1, 3, 1])
 
 with nav_prev:
     if st.button("← Prev", use_container_width=True):
-        current = st.session_state.calendar_month
-        prev_month_last_day = current - timedelta(days=1)
-        st.session_state.calendar_month = prev_month_last_day.replace(day=1)
+        previous_month = current_month - timedelta(days=1)
+        st.session_state.calendar_month = previous_month.replace(day=1)
         st.rerun()
 
 with nav_label:
     st.markdown(
-        f"<h4 style='text-align:center'>{st.session_state.calendar_month.strftime('%B %Y')}</h4>",
+        f"<h4 style='text-align:center'>{current_month.strftime('%B %Y')}</h4>",
         unsafe_allow_html=True,
     )
 
 with nav_next:
     if st.button("Next →", use_container_width=True):
-        current = st.session_state.calendar_month
-        days_in_month = (current.replace(month=current.month % 12 + 1, day=1) - timedelta(days=1)).day if current.month != 12 else 31
-        next_month_first_day = current.replace(day=days_in_month) + timedelta(days=1)
-        st.session_state.calendar_month = next_month_first_day.replace(day=1)
+        if current_month.month == 12:
+            next_month = current_month.replace(year=current_month.year + 1, month=1, day=1)
+        else:
+            next_month = current_month.replace(month=current_month.month + 1, day=1)
+        st.session_state.calendar_month = next_month
         st.rerun()
 
 month_start = st.session_state.calendar_month
-if month_start.month == 12:
-    next_month_start = month_start.replace(year=month_start.year + 1, month=1)
-else:
-    next_month_start = month_start.replace(month=month_start.month + 1)
-days_in_month = (next_month_start - timedelta(days=1)).day
-
-leading_blanks = month_start.weekday()  # Monday = 0
+days_in_month = calendar.monthrange(month_start.year, month_start.month)[1]
+leading_blanks = month_start.weekday()
 
 weekday_cols = st.columns(7)
 for col, label in zip(weekday_cols, ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]):
-    col.markdown(f"<div style='text-align:center; opacity:0.6; font-size:12px'>{label}</div>", unsafe_allow_html=True)
+    col.markdown(
+        f"<div style='text-align:center;opacity:0.65;font-size:12px'>{label}</div>",
+        unsafe_allow_html=True,
+    )
 
 cells = [None] * leading_blanks + list(range(1, days_in_month + 1))
-while len(cells) % 7 != 0:
+while len(cells) % 7:
     cells.append(None)
 
-for week_start in range(0, len(cells), 7):
+for offset in range(0, len(cells), 7):
     week_cols = st.columns(7)
-    for col, day_num in zip(week_cols, cells[week_start:week_start + 7]):
+    for col, day_num in zip(week_cols, cells[offset:offset + 7]):
         if day_num is None:
             col.markdown("&nbsp;", unsafe_allow_html=True)
             continue
 
-        this_date = month_start.replace(day=day_num).date()
-        day_data = day_lookup.get(this_date)
-
+        current_date = date(month_start.year, month_start.month, day_num)
+        row = day_lookup.get(current_date)
         with col:
-            if day_data is not None:
-                clicked = st.button(
-                    f"{day_num}",
-                    key=f"cal_{this_date.isoformat()}",
+            if row is not None:
+                if st.button(
+                    str(day_num),
+                    key=f"calendar_{current_date.isoformat()}",
                     use_container_width=True,
-                    type="primary" if st.session_state.selected_day == this_date else "secondary",
-                )
-                if clicked:
-                    st.session_state.selected_day = this_date
+                    type="primary" if st.session_state.selected_day == current_date else "secondary",
+                ):
+                    st.session_state.selected_day = current_date
                     st.rerun()
+
+                attendance = row["attendance_rate"]
+                label = f"{attendance:.1f}%" if pd.notna(attendance) else "Meeting"
                 st.markdown(
-                    f"<div style='text-align:center; font-size:11px; color:#2ecc71'>{day_data['avg_attendance_pct']}%</div>",
+                    f"<div style='text-align:center;font-size:11px;color:#2ecc71'>{label}</div>",
                     unsafe_allow_html=True,
                 )
             else:
-                st.markdown(
-                    f"<div style='text-align:center; padding:8px 0; opacity:0.35'>{day_num}</div>",
+                col.markdown(
+                    f"<div style='text-align:center;padding:8px 0;opacity:0.35'>{day_num}</div>",
                     unsafe_allow_html=True,
                 )
 
-if st.session_state.selected_day is not None and st.session_state.selected_day in day_lookup:
+if st.session_state.selected_day in day_lookup:
     selected = day_lookup[st.session_state.selected_day]
-    st.markdown(f"**{st.session_state.selected_day.strftime('%d %B %Y')} — {selected['meeting_title']}**")
-    sel_col1, sel_col2 = st.columns(2)
-    sel_col1.metric("Attendance Rate", f"{selected['avg_attendance_pct']}%")
-    sel_col2.metric("Absent Rate", f"{selected['absent_rate_pct']}%")
+    st.markdown(
+        f"**{st.session_state.selected_day.strftime('%d %B %Y')} — "
+        f"{selected['meeting_title']}**"
+    )
+    selected_col1, selected_col2, selected_col3 = st.columns(3)
+    selected_col1.metric(
+        "Attendance Rate",
+        f"{selected['attendance_rate']:.1f}%" if pd.notna(selected["attendance_rate"]) else "N/A",
+    )
+    selected_col2.metric(
+        "Absent Rate",
+        f"{selected['absent_rate']:.1f}%" if pd.notna(selected["absent_rate"]) else "N/A",
+    )
+    selected_col3.metric("Low Attendees", int(selected["low_count"]))
+    if st.button("Clear selected date"):
+        st.session_state.selected_day = None
+        st.rerun()
