@@ -15,6 +15,11 @@ credentials.json
 meeting-bot/browser-profile/
 meeting-bot/browser-profiles/
 meeting-bot/test-browser-profile/
+meeting-bot/browser-profile-test/
+/browser-profile-test/
+/browser-profile/
+/meeting-bot/browser-profile-test/
+/meeting-bot/browser-profile/
 
 # Generated bot output (real attendee data)
 meeting-bot/output/active/

@@ -327,17 +327,72 @@ class MeetingTracker {
         }
     }
 
+    
+    
     async getParticipants() {
         if (!this.page || this.page.isClosed()) {
             return [];
         }
 
         try {
-            const candidates = await this.page.evaluate(() => {
+            const result = await this.page.evaluate(() => {
                 const collected = [];
+                const seen = new Set();
 
-                // Prefer individual name spans. Do not read the full text
-                // of a participant tile, which may include toolbar labels.
+                const isVisible = (element) => {
+                    const style = window.getComputedStyle(element);
+                    const rect = element.getBoundingClientRect();
+
+                    return (
+                        style.display !== "none" &&
+                        style.visibility !== "hidden" &&
+                        Number(style.opacity) !== 0 &&
+                        rect.width > 0 &&
+                        rect.height > 0
+                    );
+                };
+
+                const addName = (rawName) => {
+                    if (typeof rawName !== "string") return;
+
+                    let name = rawName
+                        .replace(/\s+/g, " ")
+                        .trim()
+                        .replace(/\s*\(You\)\s*$/i, "")
+                        .replace(/\s*-\s*You\s*$/i, "")
+                        .trim();
+
+                    if (!name || name.length > 120) return;
+
+                    // Reject obvious Google Meet controls and interface labels.
+                    const invalidText =
+                        /^(people|participants|chat|activities|meeting details|messages|more options|more actions|microphone|camera|leave call|present now|host controls|mic_off|devices|keep_outline|you)$/i;
+
+                    if (invalidText.test(name)) return;
+
+                    if (
+                        /\b(pin .* to your main screen|you can't unmute someone else|turn on microphone|turn off microphone|turn on camera|turn off camera|backgrounds and effects|visual effects|reframe)\b/i.test(name)
+                    ) {
+                        return;
+                    }
+
+                    // Do not accept text that looks like a control description.
+                    if (
+                        /^(pin|unpin|mute|remove|more actions|turn on|turn off)\b/i.test(name)
+                    ) {
+                        return;
+                    }
+
+                    const key = name.toLocaleLowerCase();
+
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        collected.push(name);
+                    }
+                };
+
+                // Use specific participant-name elements only.
+                // Never scrape generic buttons, list rows, or all aria-labels.
                 const selectors = [
                     "span.zWGUib",
                     "[data-self-name]"
@@ -345,53 +400,71 @@ class MeetingTracker {
 
                 for (const selector of selectors) {
                     document.querySelectorAll(selector).forEach(element => {
-                        const ariaLabel = element.getAttribute("aria-label");
-                        const text = element.textContent || "";
+                        if (!isVisible(element)) return;
 
-                        // aria-labels sometimes describe controls instead
-                        // of naming the participant, so retain the text
-                        // separately and validate both outside the page.
-                        if (ariaLabel) collected.push(ariaLabel);
-                        if (text) collected.push(text);
+                        // Ignore elements that are themselves controls.
+                        if (
+                            element.matches("button, [role='button']") ||
+                            element.closest("button, [role='button']")
+                        ) {
+                            return;
+                        }
+
+                        const text = (
+                            element.innerText ||
+                            element.textContent ||
+                            ""
+                        ).trim();
+
+                        addName(text);
+
+                        // Only use this attribute on the specific self-name selector.
+                        if (selector === "[data-self-name]") {
+                            addName(element.getAttribute("data-self-name") || "");
+                        }
                     });
                 }
 
-                // Inspect accessible participant-list rows as a fallback,
-                // but only collect short, name-like child text.
-                document.querySelectorAll('[role="listitem"]').forEach(row => {
-                    const textNodes = row.querySelectorAll("span.zWGUib");
-
-                    textNodes.forEach(element => {
-                        const text = element.textContent || "";
-                        if (text) collected.push(text);
-                    });
-                });
-
-                return collected;
+                return {
+                    names: collected,
+                    diagnostics: {
+                        title: document.title,
+                        nameElements: document.querySelectorAll("span.zWGUib").length,
+                        selfNameElements: document.querySelectorAll("[data-self-name]").length
+                    }
+                };
             });
 
             const names = new Map();
 
-            for (const candidate of candidates) {
-                const name = canonicalizeName(candidate);
+            for (const rawName of result.names) {
+                const name = canonicalizeName(rawName);
 
                 if (!name || isBotParticipant(name)) continue;
 
                 const key = participantKey(name);
 
-                if (!names.has(key)) {
+                if (key && !names.has(key)) {
                     names.set(key, name);
                 }
             }
 
-            const result = [...names.values()];
+            const participants = [...names.values()];
 
             console.log(
-                `[${this.meetingId}] Clean participant names (${result.length}):`,
-                result
+                `[${this.meetingId}] Clean participant names (${participants.length}):`,
+                participants
             );
 
-            return result;
+            if (participants.length === 0) {
+                console.warn(
+                    `[${this.meetingId}] No participant names found. ` +
+                    "Google Meet selector diagnostics:",
+                    result.diagnostics
+                );
+            }
+
+            return participants;
         } catch (error) {
             console.error(
                 `[${this.meetingId}] Participant detection failed:`,
@@ -401,6 +474,7 @@ class MeetingTracker {
             return [];
         }
     }
+
 
     async pollParticipants() {
         if (this.meetingEnded) return;

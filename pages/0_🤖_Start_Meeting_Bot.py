@@ -1,3 +1,4 @@
+
 import json
 import os
 import subprocess
@@ -11,24 +12,18 @@ import streamlit as st
 
 
 PROJECT_ROOT = os.path.dirname(
-    os.path.dirname(
-        os.path.abspath(__file__)
-    )
+    os.path.dirname(os.path.abspath(__file__))
 )
 
 MANAGER_FILE = os.path.join(
     PROJECT_ROOT,
     "meeting-bot",
-    "meeting-manager.js"
+    "meeting-manager.js",
 )
 
-MANAGER_URL = (
-    "http://127.0.0.1:8765"
-)
-
-IST = ZoneInfo(
-    "Asia/Kolkata"
-)
+MANAGER_URL = "http://127.0.0.1:8765"
+IST = ZoneInfo("Asia/Kolkata")
+UTC = ZoneInfo("UTC")
 
 
 def parse_datetime(value):
@@ -36,108 +31,73 @@ def parse_datetime(value):
         return None
 
     try:
-        return datetime.fromisoformat(
-            value.replace(
-                "Z",
-                "+00:00"
-            )
+        parsed = datetime.fromisoformat(
+            value.replace("Z", "+00:00")
         )
-    except Exception:
+
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=UTC)
+
+        return parsed
+
+    except (TypeError, ValueError):
         return None
 
 
 def format_datetime(value):
-    parsed = parse_datetime(
-        value
-    )
+    parsed = parse_datetime(value)
 
     if parsed is None:
         return "--"
 
-    return parsed.astimezone(
-        IST
-    ).strftime(
+    return parsed.astimezone(IST).strftime(
         "%d %b %Y, %I:%M:%S %p"
     )
 
 
 def format_time(value):
-    parsed = parse_datetime(
-        value
-    )
+    parsed = parse_datetime(value)
 
     if parsed is None:
         return "--"
 
-    return parsed.astimezone(
-        IST
-    ).strftime(
+    return parsed.astimezone(IST).strftime(
         "%I:%M:%S %p"
     )
 
 
-def manager_request(
-    method,
-    endpoint,
-    data=None
-):
-    url = (
-        MANAGER_URL +
-        endpoint
-    )
-
+def manager_request(method, endpoint, data=None):
+    url = MANAGER_URL + endpoint
     body = None
     headers = {}
 
     if data is not None:
-        body = json.dumps(
-            data
-        ).encode(
-            "utf-8"
-        )
-
-        headers[
-            "Content-Type"
-        ] = "application/json"
+        body = json.dumps(data).encode("utf-8")
+        headers["Content-Type"] = "application/json"
 
     request = Request(
         url,
         data=body,
         headers=headers,
-        method=method
+        method=method,
     )
 
-    with urlopen(
-        request,
-        timeout=10
-    ) as response:
+    with urlopen(request, timeout=10) as response:
         raw = response.read()
 
         if not raw:
             return None
 
-        return json.loads(
-            raw.decode(
-                "utf-8"
-            )
-        )
+        return json.loads(raw.decode("utf-8"))
 
 
 def manager_is_running():
     try:
-        result = manager_request(
-            "GET",
-            "/health"
-        )
+        result = manager_request("GET", "/health")
 
         return (
-            isinstance(
-                result,
-                dict
-            )
-            and result.get(
-                "status"
-            ) == "ok"
+            isinstance(result, dict)
+            and result.get("status") == "ok"
         )
 
     except Exception:
@@ -150,18 +110,12 @@ def start_manager():
 
     try:
         subprocess.Popen(
-            [
-                "node",
-                MANAGER_FILE
-            ],
-            cwd=PROJECT_ROOT
+            ["node", MANAGER_FILE],
+            cwd=PROJECT_ROOT,
         )
 
     except Exception as error:
-        st.error(
-            f"Could not start meeting manager: {error}"
-        )
-
+        st.error(f"Could not start meeting manager: {error}")
         return False
 
     for _ in range(20):
@@ -174,129 +128,77 @@ def start_manager():
         "Meeting manager did not start. "
         "Check the terminal running Streamlit."
     )
-
     return False
 
 
 def get_meetings():
     try:
-        result = manager_request(
-            "GET",
-            "/meetings"
-        )
-
-        if isinstance(
-            result,
-            list
-        ):
-            return result
-
-        return []
+        result = manager_request("GET", "/meetings")
+        return result if isinstance(result, list) else []
 
     except Exception:
         return []
 
 
-def normalize_participants(
-    participants
-):
-    if isinstance(
-        participants,
-        list
-    ):
-        return participants
+def normalize_participants(raw):
+    if isinstance(raw, list):
+        return [
+            participant
+            for participant in raw
+            if isinstance(participant, dict)
+        ]
 
-    if isinstance(
-        participants,
-        dict
-    ):
-        normalized = []
+    if isinstance(raw, dict):
+        result = []
 
-        for name, data in (
-            participants.items()
-        ):
-            if not isinstance(
-                data,
-                dict
-            ):
-                data = {}
+        for name, details in raw.items():
+            details = details if isinstance(details, dict) else {}
 
-            normalized.append(
-                {
-                    "name": name,
-                    "email": data.get(
-                        "email",
-                        ""
-                    ),
-                    "join_time": data.get(
-                        "join_time"
-                    ),
-                    "leave_time": data.get(
-                        "leave_time"
-                    ),
-                    "duration_minutes":
-                        data.get(
-                            "duration_minutes",
-                            0
-                        ),
-                    "attendance_percentage":
-                        data.get(
-                            "attendance_percentage"
-                        ),
-                    "status":
-                        data.get(
-                            "status"
-                        ),
-                    "sessions":
-                        data.get(
-                            "sessions",
-                            []
-                        )
-                }
-            )
+            result.append({
+                "name": name,
+                **details,
+            })
 
-        return normalized
+        return result
 
     return []
 
 
-def calculate_live_duration(
-    participant
-):
-    sessions = participant.get(
-        "sessions",
-        []
+def get_sessions(participant):
+    sessions = participant.get("sessions", [])
+
+    return sessions if isinstance(sessions, list) else []
+
+
+def is_currently_present(participant):
+    """
+    A participant is currently present if their latest session
+    exists and has no leave_time.
+    """
+    sessions = get_sessions(participant)
+
+    return (
+        bool(sessions)
+        and sessions[-1].get("leave_time") is None
     )
 
+
+def calculate_duration_seconds(participant):
     total_seconds = 0
+    now = datetime.now(UTC)
 
-    now = datetime.now(
-        ZoneInfo("UTC")
-    )
-
-    for session in sessions:
-        join_time = parse_datetime(
-            session.get(
-                "join_time"
-            )
-        )
+    for session in get_sessions(participant):
+        join_time = parse_datetime(session.get("join_time"))
 
         if join_time is None:
             continue
 
-        leave_time = parse_datetime(
-            session.get(
-                "leave_time"
-            )
-        )
+        leave_time = parse_datetime(session.get("leave_time"))
 
         if leave_time is None:
             leave_time = now
 
-        duration = (
-            leave_time -
-            join_time
-        ).total_seconds()
+        duration = (leave_time - join_time).total_seconds()
 
         if duration > 0:
             total_seconds += duration
@@ -304,394 +206,241 @@ def calculate_live_duration(
     return total_seconds
 
 
-def render_participant(
-    participant
-):
-    name = participant.get(
-        "name",
-        "Unknown"
+def render_participant(participant):
+    name = participant.get("name", "Unknown")
+    sessions = get_sessions(participant)
+
+    percentage = participant.get("attendance_percentage")
+
+    present = is_currently_present(participant)
+
+    duration_seconds = int(
+        calculate_duration_seconds(participant)
     )
 
-    sessions = participant.get(
-        "sessions",
-        []
-    )
+    minutes, seconds = divmod(duration_seconds, 60)
 
-    percentage = participant.get(
-        "attendance_percentage"
-    )
-
-    status = participant.get(
-        "status"
-    )
-
-    currently_present = (
-        bool(sessions)
-        and sessions[-1].get(
-            "leave_time"
-        ) is None
-    )
-
-    if currently_present:
-        display_status = (
-            "🟢 Currently Present"
-        )
-    else:
-        display_status = (
-            status or
-            "⚪ Left Meeting"
-        )
-
-    duration_seconds = (
-        calculate_live_duration(
-            participant
-        )
-    )
-
-    minutes = int(
-        duration_seconds // 60
-    )
-
-    seconds = int(
-        duration_seconds % 60
-    )
-
-    with st.container(
-        border=True
-    ):
-        col1, col2, col3 = (
-            st.columns(
-                [2, 1, 1]
-            )
-        )
+    with st.container(border=True):
+        col1, col2, col3 = st.columns([2, 1, 1])
 
         with col1:
-            st.markdown(
-                f"### {name}"
-            )
+            st.markdown(f"### {name}")
 
-            st.caption(
-                display_status
-            )
+            if present:
+                st.caption("🟢 Currently in meeting")
+            else:
+                st.caption("⚪ Left meeting")
 
         with col2:
-            st.metric(
-                "Sessions",
-                len(sessions)
-            )
+            st.metric("Sessions", len(sessions))
 
         with col3:
-            st.metric(
-                "Duration",
-                f"{minutes}m {seconds}s"
-            )
+            st.metric("Duration", f"{minutes}m {seconds}s")
 
         if percentage is not None:
-            st.caption(
-                "Attendance: "
-                f"{float(percentage):.1f}%"
-            )
+            try:
+                st.caption(
+                    f"Recorded attendance: {float(percentage):.1f}%"
+                )
+            except (TypeError, ValueError):
+                pass
 
         session_rows = []
 
         for session in sessions:
-            session_join = (
-                session.get(
-                    "join_time"
+            join_value = session.get("join_time")
+            leave_value = session.get("leave_time")
+
+            join_dt = parse_datetime(join_value)
+            leave_dt = parse_datetime(leave_value)
+
+            if join_dt is not None:
+                end_dt = leave_dt or datetime.now(UTC)
+                duration = max(
+                    0,
+                    (end_dt - join_dt).total_seconds(),
                 )
-            )
-
-            session_leave = (
-                session.get(
-                    "leave_time"
-                )
-            )
-
-            join_dt = parse_datetime(
-                session_join
-            )
-
-            leave_dt = parse_datetime(
-                session_leave
-            )
-
-            if (
-                join_dt is not None
-                and leave_dt is not None
-            ):
-                duration = (
-                    leave_dt -
-                    join_dt
-                ).total_seconds()
-
-            elif join_dt is not None:
-                duration = (
-                    datetime.now(
-                        ZoneInfo("UTC")
-                    ) -
-                    join_dt
-                ).total_seconds()
-
             else:
                 duration = 0
 
-            session_rows.append(
-                {
-                    "Joining Time":
-                        format_time(
-                            session_join
-                        ),
-                    "Leaving Time":
-                        (
-                            format_time(
-                                session_leave
-                            )
-                            if session_leave
-                            else
-                            "Still in meeting"
-                        ),
-                    "Duration":
-                        f"{duration:.1f} sec"
-                }
-            )
+            session_rows.append({
+                "Joining Time": format_time(join_value),
+                "Leaving Time": (
+                    format_time(leave_value)
+                    if leave_value
+                    else "Still in meeting"
+                ),
+                "Duration": f"{duration:.1f} sec",
+            })
 
         if session_rows:
-            with st.expander(
-                "Session History"
-            ):
+            with st.expander("Session History"):
                 st.dataframe(
                     session_rows,
-                    width="stretch",
-                    hide_index=True
+                    use_container_width=True,
+                    hide_index=True,
                 )
 
 
-def render_meeting(
-    meeting
-):
-    meeting_id = meeting.get(
-        "meeting_id",
-        "Unknown"
-    )
+def render_meeting(meeting):
+    meeting_id = meeting.get("meeting_id", "Unknown")
 
     title = (
-        meeting.get(
-            "meeting_title"
-        )
+        meeting.get("meeting_title")
         or meeting_id
     )
 
-    status = meeting.get(
-        "status",
-        "unknown"
+    status = meeting.get("status", "unknown")
+
+    participants = normalize_participants(
+        meeting.get("participants", [])
     )
 
-    participants = (
-        normalize_participants(
-            meeting.get(
-                "participants",
-                []
-            )
-        )
-    )
+    # Separate attendees using their latest session.
+    currently_present = [
+        participant
+        for participant in participants
+        if is_currently_present(participant)
+    ]
 
-    with st.container(
-        border=True
-    ):
-        st.subheader(
-            f"📋 {title}"
-        )
+    has_left = [
+        participant
+        for participant in participants
+        if not is_currently_present(participant)
+    ]
 
-        col1, col2, col3, col4 = (
-            st.columns(4)
-        )
+    with st.container(border=True):
+        st.subheader(f"📋 {title}")
+
+        col1, col2, col3, col4 = st.columns(4)
 
         with col1:
             st.metric(
                 "Status",
-                (
-                    "🟢 Active"
-                    if status == "active"
-                    else status.title()
-                )
+                "🟢 Active" if status == "active"
+                else status.title(),
             )
 
         with col2:
             st.metric(
-                "Participants",
-                len(participants)
+                "Currently Present",
+                len(currently_present),
             )
 
         with col3:
             st.metric(
-                "Low Attendance",
-                meeting.get(
-                    "low_attendance_count",
-                    0
-                )
+                "Left Meeting",
+                len(has_left),
             )
 
         with col4:
-            if (
-                meeting.get(
-                    "attendance_rate"
-                ) is not None
-            ):
-                st.metric(
-                    "Attendance Rate",
-                    f"{meeting['attendance_rate']:.1f}%"
-                )
-            else:
-                st.metric(
-                    "Attendance Rate",
-                    "N/A"
-                )
+            rate = meeting.get("attendance_rate")
 
-        if meeting.get(
-            "start_time"
-        ):
+            st.metric(
+                "Attendance Rate",
+                f"{rate:.1f}%"
+                if isinstance(rate, (int, float))
+                else "N/A",
+            )
+
+        if meeting.get("start_time"):
             st.caption(
                 "Started: "
-                + format_datetime(
-                    meeting[
-                        "start_time"
-                    ]
-                )
+                + format_datetime(meeting["start_time"])
                 + " IST"
             )
 
-        if meeting.get(
-            "expected_attendees"
-        ):
+        if meeting.get("expected_attendees"):
             st.caption(
-                "Expected attendees: "
-                + str(
-                    meeting.get(
-                        "total_expected",
-                        0
-                    )
-                )
+                f"Expected attendees: "
+                f"{meeting.get('total_expected', 0)}"
             )
 
             st.caption(
-                "Present: "
-                + str(
-                    meeting.get(
-                        "present_count",
-                        0
-                    )
-                )
-                + " | Absent: "
-                + str(
-                    meeting.get(
-                        "absent_count",
-                        0
-                    )
-                )
+                f"Present: {meeting.get('present_count', 0)}"
+                f" | Absent: {meeting.get('absent_count', 0)}"
             )
 
-        if participants:
-            st.markdown(
-                "#### Live Participants"
-            )
+        st.markdown(
+            f"### 🟢 Currently in Meeting "
+            f"({len(currently_present)})"
+        )
 
-            for participant in (
-                participants
-            ):
-                render_participant(
-                    participant
-                )
+        if currently_present:
+            for participant in currently_present:
+                render_participant(participant)
         else:
-            st.info(
-                "No participants detected yet."
-            )
+            st.info("No participants are currently in the meeting.")
+
+        st.divider()
+
+        st.markdown(
+            f"### ⚪ Left Meeting ({len(has_left)})"
+        )
+
+        if has_left:
+            for participant in has_left:
+                render_participant(participant)
+        else:
+            st.caption("No participants have left yet.")
 
         if status == "active":
             if st.button(
                 "⏹ Stop Meeting",
                 key=f"stop_{meeting_id}",
-                type="secondary"
+                type="secondary",
             ):
                 try:
                     manager_request(
                         "DELETE",
-                        "/meetings/"
-                        + meeting_id
+                        "/meetings/" + meeting_id,
                     )
 
-                    st.success(
-                        "Meeting stopped and report saved."
-                    )
-
+                    st.success("Meeting stopped and report saved.")
                     st.rerun()
 
                 except HTTPError as error:
                     try:
-                        message = (
-                            error.read()
-                            .decode(
-                                "utf-8"
-                            )
-                        )
-
-                        st.error(
-                            message
-                        )
-
+                        message = error.read().decode("utf-8")
                     except Exception:
-                        st.error(
-                            "Could not stop meeting."
-                        )
+                        message = "Could not stop meeting."
+
+                    st.error(message)
 
                 except Exception as error:
-                    st.error(
-                        f"Could not stop meeting: {error}"
-                    )
+                    st.error(f"Could not stop meeting: {error}")
 
 
 def main():
-    st.title(
-        "🤖 Start Meeting Bot"
-    )
+    st.title("🤖 Start Meeting Bot")
 
     st.caption(
         "Start and monitor multiple Google Meet attendance bots."
     )
 
     if not manager_is_running():
-        st.warning(
-            "Meeting manager is not running."
-        )
+        st.warning("Meeting manager is not running.")
 
         if st.button(
             "Start Meeting Manager",
-            type="primary"
+            type="primary",
         ):
             if start_manager():
-                st.success(
-                    "Meeting manager started."
-                )
-
+                st.success("Meeting manager started.")
                 st.rerun()
 
         st.divider()
 
-    st.subheader(
-        "Start New Meeting"
-    )
+    st.subheader("Start New Meeting")
 
     meeting_title = st.text_input(
         "Meeting Name",
-        placeholder=(
-            "Optional — e.g. Project Kickoff"
-        )
+        placeholder="Optional — e.g. Project Kickoff",
     )
 
     meet_link = st.text_input(
         "Google Meet Link",
-        placeholder=(
-            "https://meet.google.com/abc-defg-hij"
-        )
+        placeholder="https://meet.google.com/abc-defg-hij",
     )
 
     roster_text = st.text_area(
@@ -703,7 +452,7 @@ def main():
             "Priya Singh\n"
             "Aman Verma"
         ),
-        height=140
+        height=140,
     )
 
     expected_attendees = [
@@ -712,21 +461,14 @@ def main():
         if name.strip()
     ]
 
-    if st.button(
-        "▶ Start Bot",
-        type="primary"
-    ):
+    if st.button("▶ Start Bot", type="primary"):
         if not meet_link.strip():
-            st.error(
-                "Please enter a Google Meet link."
-            )
+            st.error("Please enter a Google Meet link.")
 
         elif not meet_link.startswith(
             "https://meet.google.com/"
         ):
-            st.error(
-                "Please enter a valid Google Meet link."
-            )
+            st.error("Please enter a valid Google Meet link.")
 
         elif not start_manager():
             pass
@@ -737,99 +479,66 @@ def main():
                     "POST",
                     "/meetings",
                     {
-                        "meet_link":
-                            meet_link.strip(),
-
-                        "meeting_title":
-                            meeting_title.strip(),
-
-                        "expected_attendees":
-                            expected_attendees
-                    }
+                        "meet_link": meet_link.strip(),
+                        "meeting_title": meeting_title.strip(),
+                        "expected_attendees": expected_attendees,
+                    },
                 )
 
-                st.success(
-                    "Bot joined the meeting successfully."
-                )
+                st.success("Meeting start request submitted.")
 
-                st.caption(
-                    "Meeting ID: "
-                    + report.get(
-                        "meeting_id",
-                        "Unknown"
+                if isinstance(report, dict):
+                    st.caption(
+                        "Meeting ID: "
+                        + str(report.get("meeting_id", "Unknown"))
                     )
+
+                st.info(
+                    "If Chrome requires Google sign-in or meeting "
+                    "admission, complete that step in the browser window."
                 )
 
                 st.rerun()
 
             except HTTPError as error:
                 try:
-                    message = (
-                        error.read()
-                        .decode(
-                            "utf-8"
-                        )
-                    )
+                    message = error.read().decode("utf-8")
 
                     try:
-                        parsed = json.loads(
-                            message
-                        )
+                        parsed = json.loads(message)
+                        message = parsed.get("error", message)
+                    except json.JSONDecodeError:
+                        pass
 
-                        st.error(
-                            parsed.get(
-                                "error",
-                                message
-                            )
-                        )
-
-                    except Exception:
-                        st.error(
-                            message
-                        )
+                    st.error(message)
 
                 except Exception:
-                    st.error(
-                        "Could not start meeting."
-                    )
+                    st.error("Could not start meeting.")
 
             except URLError:
-                st.error(
-                    "Meeting manager is not reachable."
-                )
+                st.error("Meeting manager is not reachable.")
 
             except Exception as error:
-                st.error(
-                    f"Could not start meeting: {error}"
-                )
+                st.error(f"Could not start meeting: {error}")
 
     st.divider()
 
-    st.subheader(
-        "Active Meetings"
-    )
+    st.subheader("Active Meetings")
 
-    if st.button(
-        "🔄 Refresh Meetings"
-    ):
+    if st.button("🔄 Refresh Meetings"):
         st.rerun()
 
     meetings = get_meetings()
 
     if not meetings:
-        st.info(
-            "No active meetings."
-        )
-
+        st.info("No active meetings.")
     else:
         st.caption(
             f"{len(meetings)} meeting(s) currently being tracked."
         )
 
         for meeting in meetings:
-            render_meeting(
-                meeting
-            )
+            render_meeting(meeting)
 
 
 if __name__ == "__main__":
