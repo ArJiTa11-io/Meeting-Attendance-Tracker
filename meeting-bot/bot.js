@@ -9,8 +9,8 @@ const ACTIVE_DIRECTORY = path.join(OUTPUT_DIRECTORY, "active");
 const REPORTS_DIRECTORY = path.join(OUTPUT_DIRECTORY, "reports");
 
 const POLL_INTERVAL_MS = 10000;
-const LOW_ATTENDANCE_THRESHOLD = 75;
-const PRESENT_THRESHOLD = 90;
+const LOW_ATTENDANCE_THRESHOLD = 50;
+const PRESENT_THRESHOLD = 70;
 
 // Set BOT_DISPLAY_NAME in your environment if the authenticated bot
 // uses a different Google Meet display name.
@@ -579,12 +579,12 @@ class MeetingTracker {
             )
             : 0;
 
-        let status = "Low Attendance";
+        let status = "Tardy";
 
         if (attendancePercentage >= PRESENT_THRESHOLD) {
             status = "Present";
         } else if (attendancePercentage >= LOW_ATTENDANCE_THRESHOLD) {
-            status = "Partially Present";
+            status = "Partially Present (Tardy)";
         }
 
         const firstSession = data.sessions[0];

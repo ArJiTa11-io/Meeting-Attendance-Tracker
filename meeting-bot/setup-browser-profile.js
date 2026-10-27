@@ -17,7 +17,7 @@ async function setupBrowserProfile() {
 
     const page = context.pages()[0] || await context.newPage();
 
-    await page.goto("https://meet.google.com/");
+    await page.goto("https://accounts.google.com/");
 
     console.log("\n1. Sign in to your Google account in the opened browser.");
     console.log("2. Complete any verification Google requests.");
