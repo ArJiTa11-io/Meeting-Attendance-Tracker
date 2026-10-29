@@ -121,23 +121,17 @@ def get_true_absentees(participants, expected_roster):
     ]
 
 
+
 def format_time_12h(time_value):
     if not time_value:
         return "--"
 
     try:
-        parsed = pd.to_datetime(time_value, errors="raise")
+        parsed = pd.to_datetime(time_value, errors="raise", utc=True)
+        parsed = parsed.tz_convert("Asia/Kolkata")
         return parsed.strftime("%I:%M %p")
     except (ValueError, TypeError, OverflowError):
-        try:
-            parts = str(time_value).split(":")
-            hour = int(parts[0])
-            minute = parts[1]
-            suffix = "AM" if hour < 12 else "PM"
-            hour_12 = hour % 12 or 12
-            return f"{hour_12}:{minute} {suffix}"
-        except (ValueError, IndexError, AttributeError):
-            return str(time_value)
+        return str(time_value)
 
 
 def format_date(date_value):
@@ -256,7 +250,7 @@ if selected_report is not None:
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
     kpi1.metric("Detected Attendees", len(participants))
     kpi2.metric("Present", present_count)
-    kpi3.metric("Low Attendance", low_count)
+    kpi3.metric("Partially Present", low_count)
     kpi4.metric("Absent", len(absentees) if expected_roster else "N/A")
 
     if expected_roster:
